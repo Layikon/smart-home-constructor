@@ -8,8 +8,7 @@ export function initAdminTool() {
     // Відкриття модального вікна
     if (btn) btn.onclick = () => modal.classList.remove('hidden');
 
-    // Логіка закриття вже є в самому шаблоні (inline script),
-    // але для надійності можна залишити обробку кліку поза вікном
+    // Логіка закриття
     window.addEventListener('click', (event) => {
         if (event.target === modal) modal.classList.add('hidden');
     });
@@ -23,8 +22,8 @@ export function initAdminTool() {
             hardwareCaps.push(checkbox.value);
         });
 
-        // 2. Отримуємо основні значення
-        const type = document.getElementById('dev-type').value;
+        // 2. Отримуємо значення з твоєї форми
+        const rawType = document.getElementById('dev-type').value; // Отримуємо "sensor", "hub" і т.д.
         const brand = document.getElementById('dev-brand').value;
         const name = document.getElementById('dev-name').value;
 
@@ -34,35 +33,54 @@ export function initAdminTool() {
             iconValue += '.png';
         }
 
-        // Карта моделей (використовуємо існуючі у вашій папці static/models/)
+        // 3. Синхронізація з ui_manager.js
+        // Перетворюємо "sensor" на "temp", щоб працювали іконки та категорії
+        const typeMapping = {
+            'sensor': 'temp',
+            'power': 'power',
+            'motion': 'motion',
+            'camera': 'camera',
+            'hub': 'hub'
+        };
+
+        const finalType = typeMapping[rawType] || rawType;
+
+        // Автоматично визначаємо категорію
+        const categoryMapping = {
+            'temp': 'Клімат',
+            'power': 'Електрика',
+            'motion': 'Безпека',
+            'camera': 'Камери',
+            'hub': 'Керування'
+        };
+
+        // Карта 3D-моделей
         const modelMap = {
-            'sensor': 'temp_sensor.glb',
+            'temp': 'temp_sensor.glb',
             'motion': 'motion_sensor.glb',
             'power': 'socket.glb',
             'camera': 'camera.glb',
             'hub': 'hub.glb'
         };
 
-        // 3. Формуємо об'єкт пристрою (Технічний паспорт)
+        // 4. Формуємо об'єкт пристрою
         const newDevice = {
             id: `${brand.toLowerCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-4)}`,
             brand: brand,
+            category: categoryMapping[finalType] || 'Інше',
             name: name,
-            type: type,
+            type: finalType,
             icon_file: iconValue,
-            model_path: modelMap[type] || "unified_sensor.glb",
-            capabilities: hardwareCaps, // Масив протоколів, які пристрій має "на борту"
+            model_path: modelMap[finalType] || "unified_sensor.glb",
+            capabilities: hardwareCaps,
             features: {
-                requires_hub: (type === 'sensor' || type === 'motion') // Авто-позначка для логіки
+                requires_hub: ['temp', 'motion'].includes(finalType)
             }
         };
 
-        // 4. Спеціальна логіка для ХАБІВ
-        // Якщо це хаб, додаємо список протоколів, які він підтримує як "майстер"
-        if (type === 'hub') {
+        // Спеціальна логіка для ХАБІВ
+        if (finalType === 'hub') {
             newDevice.features.is_master = true;
-            // Для простоти зараз хаб "роздає" ті ж протоколи, що вибрані в Hardware,
-            // крім Wi-Fi (бо Wi-Fi він зазвичай отримує, а не роздає)
             newDevice.features.serves_protocols = hardwareCaps.filter(cap => cap !== 'wifi' && cap !== 'ethernet');
         }
 
@@ -74,18 +92,16 @@ export function initAdminTool() {
             });
 
             if (response.ok) {
-                console.log("Пристрій успішно додано в базу:", newDevice);
+                console.log("Пристрій додано:", newDevice);
                 modal.classList.add('hidden');
                 form.reset();
-                // Перезавантажуємо сторінку, щоб оновити список пристроїв у шторці
                 window.location.reload();
             } else {
                 const errorData = await response.json();
-                alert("Помилка сервера: " + errorData.message);
+                alert("Помилка: " + errorData.message);
             }
         } catch (error) {
             console.error("Помилка мережі:", error);
-            alert("Не вдалося зв'язатися з сервером Flask.");
         }
     };
 }

@@ -16,7 +16,8 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
     async function loadDeviceLibrary() {
         try {
-            const response = await fetch('/static/data/devices.json');
+            // Додаємо timestamp, щоб уникнути кешування старого файлу JSON
+            const response = await fetch(`/static/data/devices.json?t=${Date.now()}`);
             const data = await response.json();
             deviceLibrary = data.library;
             renderCategoryIcons(deviceLibrary);
@@ -26,40 +27,44 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     }
 
     // 1. Рендеримо іконки в сайдбар (Світлий стиль)
-   function renderCategoryIcons(library) {
-    sensorsContainer.innerHTML = '';
-    // Отримуємо унікальні типи, включаючи hub
-    const types = [...new Set(library.map(d => d.type))];
+    function renderCategoryIcons(library) {
+        sensorsContainer.innerHTML = '';
 
-    types.forEach(type => {
-        const btn = document.createElement('button');
-        btn.className = `sensor-btn text-slate-400 hover:text-blue-500 text-xl p-2 w-full transition border-l-2 border-transparent`;
+        // Отримуємо унікальні типи, включаючи hub, та сортуємо їх, щоб hub був внизу
+        const types = [...new Set(library.map(d => d.type))].sort((a, b) => {
+            if (a === 'hub') return 1;
+            if (b === 'hub') return -1;
+            return 0;
+        });
 
-        let iconClass = 'fa-gear';
-        // Визначаємо іконку залежно від типу
-        if (type === 'temp') iconClass = 'fa-temperature-high text-rose-400';
-        if (type === 'hum') iconClass = 'fa-droplet text-sky-400';
-        if (type === 'motion') iconClass = 'fa-person-walking text-emerald-400';
-        if (type === 'power') iconClass = 'fa-bolt text-amber-400';
-        if (type === 'camera') iconClass = 'fa-video text-slate-400';
-        if (type === 'hub') iconClass = 'fa-circle-nodes text-indigo-500';
-        // --------------------------------
+        types.forEach(type => {
+            const btn = document.createElement('button');
+            btn.className = `sensor-btn text-slate-400 hover:text-blue-500 text-xl p-2 w-full transition border-l-2 border-transparent`;
 
-        btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+            let iconClass = 'fa-gear';
+            // Визначаємо іконку залежно від типу
+            if (type === 'temp') iconClass = 'fa-temperature-high text-rose-400';
+            if (type === 'hum') iconClass = 'fa-droplet text-sky-400';
+            if (type === 'motion') iconClass = 'fa-person-walking text-emerald-400';
+            if (type === 'power') iconClass = 'fa-bolt text-amber-400';
+            if (type === 'camera') iconClass = 'fa-video text-slate-400';
+            if (type === 'hub') iconClass = 'fa-circle-nodes text-indigo-500';
 
-        btn.onclick = () => {
-            document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
-            btn.classList.add('active', 'border-blue-500');
-            selectToolBtn.classList.remove('active');
+            btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
 
-            const firstDevice = library.find(d => d.type === type);
-            // Якщо для хаба в JSON категорія "Керування", він відкриє відповідну групу
-            const catName = firstDevice.category || 'Керування';
-            openDrawer(catName, type);
-        };
-        sensorsContainer.appendChild(btn);
-    });
-}
+            btn.onclick = () => {
+                document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
+                btn.classList.add('active', 'border-blue-500');
+                selectToolBtn.classList.remove('active');
+
+                const firstDevice = library.find(d => d.type === type);
+                // Пріоритет: Категорія з JSON -> 'Керування' для хабів -> 'Інше'
+                const catName = firstDevice.category || (type === 'hub' ? 'Керування' : 'Інше');
+                openDrawer(catName, type);
+            };
+            sensorsContainer.appendChild(btn);
+        });
+    }
 
     function openDrawer(categoryName, deviceType) {
         const friendlyTitles = {
@@ -67,7 +72,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             'Безпека': 'Системи безпеки',
             'Електрика': 'Енергоспоживання',
             'Камери': 'Системи відеонагляду',
-            'Керування': 'Центральні хаби' // Додано заголовок
+            'Керування': 'Центральні хаби'
         };
 
         drawerTitle.textContent = friendlyTitles[categoryName] || categoryName;
@@ -103,8 +108,10 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
 
-            // Відображаємо перший протокол або "No Prot."
-            const mainProtocol = device.capabilities && device.capabilities.length > 0 ? device.capabilities[0] : 'N/A';
+            // Відображаємо протокол (масив capabilities)
+            const mainProtocol = (device.capabilities && device.capabilities.length > 0)
+                ? device.capabilities[0]
+                : (device.protocol || 'N/A');
 
             item.innerHTML = `
                 <div class="icon-wrapper border-slate-100 bg-white shadow-sm">
@@ -120,7 +127,6 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             `;
 
             item.onclick = () => {
-                // ОНОВЛЕНО: Тепер передаємо повний об'єкт технічних характеристик
                 const sensorConfig = {
                     id: device.id,
                     brand: device.brand,
@@ -145,14 +151,18 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         'motion': { label: 'Рух', color: 'text-emerald-500', border: 'border-emerald-200' },
         'power': { label: 'Живлення', color: 'text-amber-500', border: 'border-amber-200' },
         'camera': { label: 'Камери', color: 'text-slate-500', border: 'border-slate-200' },
-        'hub': { label: 'Хаби', color: 'text-indigo-500', border: 'border-indigo-200' } // Додано лейбл для хабів
+        'hub': { label: 'Хаби', color: 'text-indigo-500', border: 'border-indigo-200' }
     };
 
     window.refreshUIList = function() {
         objectListContainer.innerHTML = '';
         const sensors = scene.children.filter(obj => obj.userData && obj.userData.isSensor === true);
-        const groups = {};
 
+        // Оновлюємо лічильник пристроїв на сцені
+        const counter = document.getElementById('sensor-count');
+        if (counter) counter.textContent = sensors.length;
+
+        const groups = {};
         sensors.forEach(s => {
             const type = s.userData.type;
             if (!groups[type]) groups[type] = [];

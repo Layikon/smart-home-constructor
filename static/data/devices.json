@@ -1,145 +1,82 @@
 {
   "library": [
     {
-      "id": "sensor_temp_01",
-      "brand": "Aqara",
-      "category": "Клімат",
-      "name": "Датчик температури та вологи",
-      "type": "temp",
-      "icon_file": "0.png",
-      "color": "0x3b82f6",
-      "model_path": "temp_sensor.glb",
-      "capabilities": [
-        "zigbee"
-      ],
-      "features": {
-        "precision": "±0.3°C",
-        "battery": "CR2032",
-        "range_m": 15,
-        "requires_hub": true
-      }
-    },
-    {
-      "id": "sensor_hum_01",
+      "id": "xiaomi_0694",
       "brand": "Xiaomi",
       "category": "Клімат",
-      "name": "Датчик вологості Bluetooth",
-      "type": "hum",
-      "icon_file": "2.png",
-      "color": "0x0ea5e9",
-      "model_path": "hum_sensor.glb",
-      "capabilities": [
-        "ble"
-      ],
-      "features": {
-        "display": "LCD",
-        "range_max": "100%",
-        "range_m": 8,
-        "requires_hub": true
-      }
-    },
-    {
-      "id": "sensor_motion_01",
-      "brand": "Sonoff",
-      "category": "Безпека",
-      "name": "Датчик руху SNZB-03",
-      "type": "motion",
-      "icon_file": "3.png",
-      "color": "0x10b981",
-      "model_path": "motion_sensor.glb",
-      "capabilities": [
-        "zigbee"
-      ],
-      "features": {
-        "detection_range": 6,
-        "detection_angle": 110,
-        "range_m": 12,
-        "requires_hub": true
-      }
-    },
-    {
-      "id": "power_socket_01",
-      "brand": "TP-Link Tapo",
-      "category": "Електрика",
-      "name": "Розумна розетка Plus S",
-      "type": "power",
+      "name": "Ta[p H100",
+      "type": "temp",
       "icon_file": "1.png",
-      "color": "0xf59e0b",
+      "model_path": "temp_sensor.glb",
+      "capabilities": [
+        "wifi",
+        "sub1g"
+      ],
+      "features": {
+        "requires_hub": true
+      }
+    },
+    {
+      "id": "xiaomi_9373",
+      "brand": "Xiaomi",
+      "category": "Електрика",
+      "name": "123123",
+      "type": "power",
+      "icon_file": "2.png",
       "model_path": "socket.glb",
       "capabilities": [
-        "wifi",
-        "matter"
-      ],
-      "features": {
-        "max_load_watts": 2500,
-        "power_monitoring": true,
-        "range_m": 30,
-        "requires_hub": false
-      }
-    },
-    {
-      "id": "camera_indoor_01",
-      "brand": "Ezviz",
-      "category": "Камери",
-      "name": "IP-Камера поворотна",
-      "type": "camera",
-      "icon_file": "5.png",
-      "color": "0x64748b",
-      "model_path": "camera.glb",
-      "capabilities": [
-        "wifi",
-        "ethernet"
-      ],
-      "features": {
-        "resolution": "2K",
-        "night_vision": true,
-        "rotation_angle": 360,
-        "range_m": 25,
-        "requires_hub": false
-      }
-    },
-    {
-      "id": "aqara_hub_m2",
-      "brand": "Aqara",
-      "category": "Керування",
-      "name": "Hub M2",
-      "type": "hub",
-      "icon_file": "6.png",
-      "color": "0x000000",
-      "model_path": "hub.glb",
-      "capabilities": [
-        "wifi",
-        "ethernet"
-      ],
-      "features": {
-        "is_master": true,
-        "serves_protocols": [
-          "zigbee",
-          "ble",
-          "ir"
-        ],
-        "range_m": 50
-      }
-    },
-    {
-      "id": "tp-link_4490",
-      "brand": "TP-Link",
-      "name": "Hub",
-      "type": "hub",
-      "icon_file": "3.png",
-      "model_path": "hub.glb",
-      "capabilities": [
-        "wifi",
         "matter",
         "sub1g"
       ],
       "features": {
+        "requires_hub": false
+      }
+    },
+    {
+      "id": "xiaomi_7126",
+      "brand": "Xiaomi",
+      "category": "Безпека",
+      "name": "123123",
+      "type": "motion",
+      "icon_file": "3.png",
+      "model_path": "motion_sensor.glb",
+      "capabilities": [
+        "wifi"
+      ],
+      "features": {
+        "requires_hub": true
+      }
+    },
+    {
+      "id": "xiaomi_3917",
+      "brand": "Xiaomi",
+      "category": "Камери",
+      "name": "Tapo H100",
+      "type": "camera",
+      "icon_file": "4.png",
+      "model_path": "camera.glb",
+      "capabilities": [
+        "wifi"
+      ],
+      "features": {
+        "requires_hub": false
+      }
+    },
+    {
+      "id": "xiaomi_2849",
+      "brand": "Xiaomi",
+      "category": "Керування",
+      "name": "23",
+      "type": "hub",
+      "icon_file": "5.png",
+      "model_path": "hub.glb",
+      "capabilities": [
+        "wifi"
+      ],
+      "features": {
         "requires_hub": false,
         "is_master": true,
-        "serves_protocols": [
-          "matter",
-          "sub1g"
-        ]
+        "serves_protocols": []
       }
     }
   ]
