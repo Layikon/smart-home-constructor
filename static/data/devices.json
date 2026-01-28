@@ -78,6 +78,58 @@
         "is_master": true,
         "serves_protocols": []
       }
+    },
+    {
+      "id": "xiaomi_6250",
+      "brand": "Xiaomi",
+      "category": "Клімат",
+      "name": "віавіа",
+      "type": "temp",
+      "icon_file": "2.png",
+      "model_path": "temp_sensor.glb",
+      "capabilities": [
+        "matter"
+      ],
+      "features": {
+        "requires_hub": true
+      }
+    },
+    {
+      "id": "xiaomi_8787",
+      "brand": "Xiaomi",
+      "category": "Клімат",
+      "name": "цфв",
+      "type": "temp",
+      "icon_file": "2.png",
+      "model_path": "temp_sensor.glb",
+      "capabilities": [
+        "wifi"
+      ],
+      "features": {
+        "requires_hub": true
+      }
+    },
+    {
+      "id": "tp-link_0301",
+      "brand": "TP-Link",
+      "category": "Керування",
+      "name": "Tapo H100",
+      "type": "hub",
+      "icon_file": "2.png",
+      "model_path": "hub.glb",
+      "capabilities": [
+        "wifi",
+        "matter",
+        "sub1g"
+      ],
+      "features": {
+        "requires_hub": false,
+        "is_master": true,
+        "serves_protocols": [
+          "matter",
+          "sub1g"
+        ]
+      }
     }
   ]
 }

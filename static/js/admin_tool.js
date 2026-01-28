@@ -22,10 +22,14 @@ export function initAdminTool() {
             hardwareCaps.push(checkbox.value);
         });
 
-        // 2. Отримуємо значення з твоєї форми
-        const rawType = document.getElementById('dev-type').value; // Отримуємо "sensor", "hub" і т.д.
+        // 2. Отримуємо значення з форми
+        const rawType = document.getElementById('dev-type').value;
         const brand = document.getElementById('dev-brand').value;
         const name = document.getElementById('dev-name').value;
+
+        // Нова логіка: отримуємо конкретний підтип датчика (температура чи вологість)
+        const sensorSubtypeSelect = document.querySelector('#dynamic-fields [data-type="temp"] select');
+        const sensorSubtype = sensorSubtypeSelect ? sensorSubtypeSelect.value : 'temp';
 
         // Автододавання розширення для іконки
         let iconValue = document.getElementById('dev-icon').value.trim();
@@ -34,9 +38,9 @@ export function initAdminTool() {
         }
 
         // 3. Синхронізація з ui_manager.js
-        // Перетворюємо "sensor" на "temp", щоб працювали іконки та категорії
+        // Виправляємо мапінг: якщо вибрано "sensor", дивимось на підтип (temp або hum)
         const typeMapping = {
-            'sensor': 'temp',
+            'sensor': sensorSubtype, // Тут тепер буде або 'temp', або 'hum'
             'power': 'power',
             'motion': 'motion',
             'camera': 'camera',
@@ -48,6 +52,7 @@ export function initAdminTool() {
         // Автоматично визначаємо категорію
         const categoryMapping = {
             'temp': 'Клімат',
+            'hum': 'Клімат',
             'power': 'Електрика',
             'motion': 'Безпека',
             'camera': 'Камери',
@@ -57,6 +62,7 @@ export function initAdminTool() {
         // Карта 3D-моделей
         const modelMap = {
             'temp': 'temp_sensor.glb',
+            'hum': 'hum_sensor.glb',
             'motion': 'motion_sensor.glb',
             'power': 'socket.glb',
             'camera': 'camera.glb',
@@ -74,7 +80,7 @@ export function initAdminTool() {
             model_path: modelMap[finalType] || "unified_sensor.glb",
             capabilities: hardwareCaps,
             features: {
-                requires_hub: ['temp', 'motion'].includes(finalType)
+                requires_hub: ['temp', 'hum', 'motion'].includes(finalType)
             }
         };
 
