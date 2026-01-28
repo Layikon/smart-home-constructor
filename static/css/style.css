@@ -1,0 +1,309 @@
+/* static/css/style.css */
+
+body {
+    background-color: #f8fafc;
+    color: #1e293b;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+canvas {
+    outline: none;
+}
+
+.viewport-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #ffffff;
+}
+
+/* --- СПІЛЬНІ СТИЛІ ДЛЯ БОКОВИХ КНОПОК-СТРІЛОК --- */
+/* Це дозволяє кнопкам виглядати однаково з обох боків */
+.drawer-toggle-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 48px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 60; /* Високий пріоритет кліку */
+    color: #94a3b8;
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+.drawer-toggle-btn:hover {
+    color: #3b82f6;
+    background-color: #f8fafc;
+}
+
+/* --- ПРАВА ПАНЕЛЬ (OVERLAY) --- */
+#right-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 50; /* Вище за сцену */
+
+    background-color: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    box-shadow: -5px 0 20px rgba(0,0,0,0.05);
+
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: visible !important; /* Щоб кнопку було видно збоку */
+    flex-shrink: 0;
+}
+
+#right-panel.closed {
+    width: 0 !important;
+    min-width: 0 !important;
+    border: none !important;
+}
+
+#right-panel.closed #panel-content {
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+}
+
+/* Специфічні стилі кнопки ПРАВОЇ панелі (стирчить вліво) */
+#toggle-right-panel {
+    left: -24px;
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+}
+
+/* --- ЛІВА ШТОРКА ПРИСТРОЇВ (DEVICE DRAWER) --- */
+.device-drawer {
+    position: absolute;
+    left: 64px; /* Відступ ширини лівого тулбару */
+    top: 0;
+    bottom: 0;
+    width: 240px;
+
+    background-color: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid #e2e8f0;
+
+    z-index: 60; /* Найвищий пріоритет (вище фільтрів) */
+    display: flex;
+    flex-direction: column;
+
+    transform: translateX(-100%); /* За замовчуванням схована */
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    overflow: visible !important; /* Щоб кнопку було видно збоку */
+}
+
+.device-drawer.open {
+    transform: translateX(0);
+    box-shadow: 20px 0 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+/* Специфічні стилі кнопки ЛІВОЇ панелі (стирчить вправо) */
+#close-drawer-btn {
+    right: -24px;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+}
+
+/* --- ШТОРКА ФІЛЬТРІВ (НОВЕ) --- */
+.filter-drawer {
+    position: absolute;
+    /* 64px (лівий тулбар) + 240px (ширина device-drawer) = 304px */
+    left: 304px;
+    top: 0;
+    bottom: 0;
+    width: 240px;
+
+    background-color: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    box-shadow: 10px 0 15px -3px rgba(0, 0, 0, 0.05);
+
+    /* Z-index 55: нижче device-drawer (60), щоб виїжджати "з-під" нього,
+       але вище сцени (0-10) і правої панелі (50), якщо перетнуться */
+    z-index: 55;
+
+    /* Початковий стан: зміщена вліво на 100% своєї ширини */
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.filter-drawer.open {
+    /* Кінцевий стан: стає рівно поруч із device-drawer */
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Стилі кнопок всередині фільтра */
+.filter-opt-btn {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    background-color: white;
+    transition: all 0.2s;
+}
+
+.filter-opt-btn:hover {
+    border-color: #fb923c;
+    color: #ea580c;
+}
+
+.filter-opt-btn.active {
+    background-color: #fff7ed;
+    border-color: #f97316;
+    color: #ea580c;
+}
+
+/* --- СТИЛІ ДЛЯ РОЗМІРНИХ МІТОК --- */
+.wall-label {
+    pointer-events: none;
+    white-space: nowrap;
+    user-select: none;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #3b82f6 !important;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    border: 1px solid #bfdbfe !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease;
+    z-index: 10;
+}
+
+.wall-label:hover {
+    transform: scale(1.1);
+}
+
+/* Кнопки інструментів */
+.sensor-btn.active, .tool-btn.active {
+    color: #3b82f6 !important;
+    border-left: 3px solid #3b82f6 !important;
+    background: #eff6ff !important;
+}
+
+/* Скролбар */
+#object-list::-webkit-scrollbar,
+.custom-scroll::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+#object-list::-webkit-scrollbar-thumb,
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+/* Приховуємо скрол для горизонтальних списків, якщо потрібно */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* --- ПЛАВАЮЧІ ПІДПИСИ --- */
+.floating-label {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.95);
+    color: #1e293b;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    border: 1px solid #3b82f6;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.floating-label.visible {
+    opacity: 1;
+    transform: translateY(0px);
+}
+
+/* --- ЕЛЕМЕНТИ СПИСКУ ПРИСТРОЇВ --- */
+.drawer-header {
+    padding: 20px 16px;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #3b82f6;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
+}
+
+.brand-chip {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #64748b;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.brand-chip.active {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+.icon-wrapper {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f1f5f9;
+    border-radius: 10px;
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 4px;
+    border: 1px solid #e2e8f0;
+}
+
+.drawer-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.drawer-item:hover {
+    background-color: #f8fafc;
+}
+
+#toggle-icon {
+    transition: transform 0.3s ease;
+}

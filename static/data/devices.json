@@ -1,0 +1,111 @@
+{
+  "library": [
+    {
+      "id": "sensor_temp_01",
+      "brand": "Aqara",
+      "category": "Клімат",
+      "name": "Датчик температури та вологи",
+      "type": "temp",
+      "icon_file": "0.png",
+      "color": "0x3b82f6",
+      "model_path": "temp_sensor.glb",
+      "protocol": "Zigbee",
+      "features": {
+        "precision": "±0.3°C",
+        "battery": "CR2032",
+        "frequency": "2.4 GHz",
+        "range_m": 15,
+        "requires_hub": true,
+        "interacts_with": ["hub", "power", "temp"]
+      }
+    },
+    {
+      "id": "sensor_hum_01",
+      "brand": "Xiaomi",
+      "category": "Клімат",
+      "name": "Датчик вологості Bluetooth",
+      "type": "hum",
+      "icon_file": "2.png",
+      "color": "0x0ea5e9",
+      "model_path": "hum_sensor.glb",
+      "protocol": "BLE",
+      "features": {
+        "display": "LCD",
+        "range_max": "100%",
+        "range_m": 8,
+        "frequency": "2.4 GHz",
+        "interacts_with": ["hub", "hum"]
+      }
+    },
+    {
+      "id": "sensor_motion_01",
+      "brand": "Sonoff",
+      "category": "Безпека",
+      "name": "Датчик руху SNZB-03",
+      "type": "motion",
+      "icon_file": "3.png",
+      "color": "0x10b981",
+      "model_path": "motion_sensor.glb",
+      "protocol": "Zigbee",
+      "features": {
+        "detection_range": 6,
+        "detection_angle": 110,
+        "range_m": 12,
+        "frequency": "2.4 GHz",
+        "interacts_with": ["hub", "camera", "power"]
+      }
+    },
+    {
+      "id": "power_socket_01",
+      "brand": "TP-Link Tapo",
+      "category": "Електрика",
+      "name": "Розумна розетка Plus S",
+      "type": "power",
+      "icon_file": "1.png",
+      "color": "0xf59e0b",
+      "model_path": "socket.glb",
+      "protocol": "Wi-Fi",
+      "features": {
+        "max_load_watts": 2500,
+        "power_monitoring": true,
+        "frequency": "2.4 GHz",
+        "range_m": 30,
+        "interacts_with": ["temp", "motion", "hum"]
+      }
+    },
+    {
+      "id": "camera_indoor_01",
+      "brand": "Ezviz",
+      "category": "Камери",
+      "name": "IP-Камера поворотна",
+      "type": "camera",
+      "icon_file": "5.png",
+      "color": "0x64748b",
+      "model_path": "camera.glb",
+      "protocol": "Wi-Fi",
+      "features": {
+        "resolution": "2K",
+        "night_vision": true,
+        "rotation_angle": 360,
+        "range_m": 25,
+        "interacts_with": ["motion", "hub"]
+      }
+    },
+    {
+      "id": "aqara_hub_m2",
+      "brand": "Aqara",
+      "category": "Керування",
+      "name": "Hub M2",
+      "type": "hub",
+      "icon_file": "6.png",
+      "color": "0x000000",
+      "model_path": "hub.glb",
+      "protocol": "Zigbee 3.0/Wi-Fi",
+      "features": {
+        "is_master": true,
+        "range_m": 30,
+        "interacts_with": ["Zigbee", "BLE", "Wi-Fi"]
+      }
+    }
+  ]
+}

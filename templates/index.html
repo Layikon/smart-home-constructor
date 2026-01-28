@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Builder - Головна</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #fcfcfc; font-family: 'Inter', sans-serif; }
+
+        /* Чистіший градієнт під колір неба на фото */
+        .hero-gradient {
+            background: linear-gradient(90deg, #f8fbff 0%, #e8f2ff 50%, #f8fbff 100%);
+        }
+
+        /* Маска для м'якого зникнення обрізаних країв */
+        .image-mask {
+            mask-image: radial-gradient(circle, black 60%, transparent 95%);
+            -webkit-mask-image: radial-gradient(circle, black 60%, transparent 95%);
+        }
+
+        /* Акуратна лінія під активним пунктом для темної теми */
+        .nav-active {
+            position: relative;
+            color: #ffffff;
+        }
+        .nav-active::after {
+            content: '';
+            position: absolute;
+            bottom: -22px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #f97316; /* orange-500 */
+            border-radius: 2px 2px 0 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-house-signal text-orange-500 text-2xl"></i>
+                <span class="font-bold text-xl tracking-tight text-white">SMART HOME <span class="text-slate-400 font-light">BUILDER</span></span>
+            </div>
+
+            <nav class="hidden md:flex items-center space-x-10 text-sm font-medium text-slate-400">
+                <a href="#" class="nav-active">Головна</a>
+                <a href="#" class="hover:text-white transition-colors">Функції</a>
+                <a href="#" class="hover:text-white transition-colors">Ціни</a>
+                <a href="#" class="hover:text-white transition-colors">Підтримка</a>
+            </nav>
+
+            <button class="bg-orange-500 text-white px-7 py-2 rounded-full text-sm font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-900/20 active:scale-95">
+                Увійти
+            </button>
+
+        </div>
+    </header>
+
+    <section class="hero-gradient overflow-hidden">
+        <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-4 items-center px-6">
+            <div class="py-24 space-y-6 z-10">
+                <h1 class="text-6xl font-extrabold text-slate-900 leading-tight">
+                    Створіть ваш <br>
+                    <span class="text-blue-600">Розумний Дім</span> <br>
+                    <span class="text-orange-500">Легко</span> та <span class="text-orange-500">Швидко</span>
+                </h1>
+                <p class="text-slate-500 text-xl max-w-lg">Налаштовуйте свій смарт дім за кілька кроків прямо в браузері.</p>
+                <div class="flex space-x-4 pt-4">
+                <a href="{{ url_for('editor') }}" class="bg-orange-500 text-white px-10 py-4 rounded-full font-bold shadow-xl shadow-orange-200 hover:bg-orange-600 transition inline-block text-center">
+        Почати Налаштування
+    </a>
+
+    <button class="bg-white border border-slate-200 text-slate-600 px-10 py-4 rounded-full font-bold hover:bg-slate-50 transition">
+        Дивитись Демо
+    </button>
+</div>
+            </div>
+
+            <div class="relative flex justify-center lg:justify-end">
+                <div class="relative w-full max-w-[900px] h-[700px] flex items-center justify-center image-mask">
+                    <img src="/static/img/home.png" alt="Smart Home Plan"
+                         class="w-full h-full object-contain scale-[1.5] origin-center">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 max-w-7xl mx-auto px-6">
+        <h2 class="text-3xl font-bold text-slate-900 mb-10">Як це працює?</h2>
+        <div class="grid md:grid-cols-3 gap-8 border-b pb-12 border-gray-100">
+
+            <div class="flex items-center space-x-4 bg-white border border-gray-200 rounded-full px-5 py-3 transition-all hover:bg-slate-700 cursor-pointer group shadow-sm">
+                <span class="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">1</span>
+                <p class="font-bold text-slate-700 group-hover:text-white transition-colors">Оберіть Пристрої Смарт дому</p>
+            </div>
+
+            <div class="flex items-center space-x-4 bg-white border border-gray-200 rounded-full px-5 py-3 transition-all hover:bg-slate-700 cursor-pointer group shadow-sm">
+                <span class="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">2</span>
+                <p class="font-bold text-slate-700 group-hover:text-white transition-colors">Налаштуйте Автоматизації</p>
+            </div>
+
+            <div class="flex items-center space-x-4 bg-white border border-gray-200 rounded-full px-5 py-3 transition-all hover:bg-slate-700 cursor-pointer group shadow-sm">
+                <span class="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">3</span>
+                <p class="font-bold text-slate-700 group-hover:text-white transition-colors">Керуйте з Додатка</p>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="py-10 max-w-7xl mx-auto px-6">
+        <div class="flex space-x-4 mb-8">
+            <button class="bg-slate-700 text-white px-8 py-2 rounded-full font-medium transition-all">Безпека</button>
+            <button class="bg-white border border-slate-200 text-slate-500 px-8 py-2 rounded-full hover:bg-slate-50 transition-all">Освітлення</button>
+            <button class="bg-white border border-slate-200 text-slate-500 px-8 py-2 rounded-full hover:bg-slate-50 transition-all">Клімат</button>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center group">
+                <div class="bg-slate-50 rounded-2xl h-32 mb-4 flex items-center justify-center group-hover:bg-blue-50 transition">
+                    <i class="fa-solid fa-video text-slate-300 text-4xl group-hover:text-blue-400"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-4">Камера Безпеки</h3>
+                <button class="bg-orange-500 text-white w-full py-2.5 rounded-full text-xs font-bold hover:bg-orange-600 transition">Додати</button>
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center group">
+                <div class="bg-slate-50 rounded-2xl h-32 mb-4 flex items-center justify-center group-hover:bg-blue-50 transition">
+                    <i class="fa-solid fa-lock text-slate-300 text-4xl group-hover:text-blue-400"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-4">Розумний Замок</h3>
+                <button class="bg-orange-500 text-white w-full py-2.5 rounded-full text-xs font-bold hover:bg-orange-600 transition">Додати</button>
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center group">
+                <div class="bg-slate-50 rounded-2xl h-32 mb-4 flex items-center justify-center group-hover:bg-blue-50 transition">
+                    <i class="fa-solid fa-lightbulb text-slate-300 text-4xl group-hover:text-blue-400"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-4">Смарт Лампочка</h3>
+                <button class="bg-orange-500 text-white w-full py-2.5 rounded-full text-xs font-bold hover:bg-orange-600 transition">Додати</button>
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center group">
+                <div class="bg-slate-50 rounded-2xl h-32 mb-4 flex items-center justify-center group-hover:bg-blue-50 transition">
+                    <i class="fa-solid fa-temperature-half text-slate-300 text-4xl group-hover:text-blue-400"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-4">Термостат</h3>
+                <button class="bg-slate-700 text-white w-full py-2.5 rounded-full text-xs font-bold hover:bg-slate-800 transition">Додати</button>
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center group">
+                <div class="bg-slate-50 rounded-2xl h-32 mb-4 flex items-center justify-center group-hover:bg-blue-50 transition">
+                    <i class="fa-solid fa-plug text-slate-300 text-4xl group-hover:text-blue-400"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-sm mb-4">Розумна Розетка</h3>
+                <button class="bg-slate-700 text-white w-full py-2.5 rounded-full text-xs font-bold hover:bg-slate-800 transition">Додати</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 max-w-7xl mx-auto px-6">
+        <h2 class="text-3xl font-bold text-slate-900 mb-2">Плануйте Автоматизації</h2>
+        <p class="text-slate-400 mb-8">Задавайте сценарії та правила роботи вашого дому.</p>
+
+        <div class="grid lg:grid-cols-2 gap-0 bg-white rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-gray-100">
+            <div class="p-10 space-y-6">
+                <div class="bg-slate-50 p-4 rounded-lg flex justify-between items-center border border-gray-100">
+                    <span class="text-slate-600 italic">Приклад: Вмикайте світло при русі</span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b border-gray-50">
+                    <span class="text-slate-700 font-medium">Автоматизація: "Включити світло..."</span>
+                    <div class="w-12 h-6 bg-slate-700 rounded-full relative"><div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b border-gray-50">
+                    <span class="text-slate-700 font-medium">Вечірній Режим</span>
+                    <div class="w-12 h-6 bg-slate-700 rounded-full relative"><div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                </div>
+                <div class="flex justify-between items-center py-3">
+                    <span class="text-slate-700 font-medium">Таймер "Вимкнути о 23:00"</span>
+                    <div class="w-12 h-6 bg-slate-700 rounded-full relative"><div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                </div>
+            </div>
+            <div class="bg-[url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1000')] bg-cover bg-center min-h-[300px]">
+                </div>
+        </div>
+    </section>
+
+    <footer class="py-10 border-t border-gray-100 text-center text-slate-400 text-xs">
+        <div class="flex justify-center space-x-6 mb-4">
+            <a href="#">Про нас</a>
+            <a href="#">Політика конфіденційності</a>
+            <a href="#">Контакти</a>
+        </div>
+        <div class="flex justify-center space-x-4 text-slate-300">
+            <i class="fa-brands fa-facebook-f"></i>
+            <i class="fa-brands fa-twitter"></i>
+            <i class="fa-brands fa-instagram"></i>
+        </div>
+    </footer>
+
+</body>
+</html>

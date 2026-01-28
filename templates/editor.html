@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Editor | Smart Home Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+</head>
+<body class="h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-500/30">
+
+    <header class="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shadow-sm relative flex-shrink-0">
+        <div class="flex items-center space-x-4">
+            <a href="/" class="text-blue-600 hover:text-blue-500 transition-colors font-medium">
+                <i class="fa-solid fa-chevron-left mr-1"></i> Назад
+            </a>
+            <div class="h-4 w-px bg-slate-200"></div>
+            <span class="text-sm font-bold tracking-widest text-slate-400 uppercase">Editor <span class="text-blue-600 font-black">v0.0</span></span>
+        </div>
+        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4">
+            <button id="mode-edit" class="px-4 py-1 text-[10px] font-bold uppercase rounded bg-white shadow-sm text-blue-600">
+                Конструктор
+            </button>
+            <button id="mode-simulate" class="px-4 py-1 text-[10px] font-bold uppercase rounded text-slate-400 hover:text-slate-600">
+                Симуляція
+            </button>
+        </div>
+        <div class="flex space-x-2">
+            <button id="admin-add-device" class="bg-slate-100 text-slate-700 px-4 py-1.5 rounded text-xs font-bold hover:bg-slate-200 transition">
+                <i class="fa-solid fa-plus mr-1"></i> База пристроїв
+            </button>
+            <button class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200">
+                Зберегти проєкт
+            </button>
+            <button class="bg-slate-800 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-slate-900 transition">
+                Експорт
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative w-full h-full">
+
+        <aside id="main-sidebar" class="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-4 space-y-1 z-30 shadow-sm relative">
+            <button id="tool-select" class="tool-btn active text-slate-400 hover:text-blue-600 text-xl p-2 w-full transition-all" title="Вибрати">
+                <i class="fa-solid fa-arrow-pointer"></i>
+            </button>
+            <div class="border-t border-slate-100 w-8 my-2"></div>
+            <div id="dynamic-sensors" class="flex flex-col items-center space-y-1 w-full"></div>
+            <div class="flex-1"></div>
+            <button class="text-slate-300 hover:text-slate-600 text-xl mb-4 transition-colors" title="Налаштування"><i class="fa-solid fa-gear"></i></button>
+        </aside>
+
+        <div id="device-drawer" class="device-drawer flex flex-col shadow-xl z-20 border-r border-slate-200 bg-white/95 backdrop-blur-md">
+            <button id="close-drawer-btn" class="drawer-toggle-btn" title="Згорнути">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+
+            <div class="drawer-header p-4 border-b border-slate-100" id="drawer-title">Оберіть пристрій</div>
+
+            <div class="flex items-center px-2 py-2 bg-slate-50/50 border-b border-slate-100 gap-2">
+                <button id="open-filter-btn" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-orange-500 hover:border-orange-300 transition shadow-sm flex-shrink-0" title="Розширені фільтри">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+                <div id="brand-filter-container" class="flex gap-1 overflow-x-auto no-scrollbar flex-1"></div>
+            </div>
+
+            <div class="drawer-list flex-1 overflow-y-auto" id="drawer-content"></div>
+        </div>
+
+        {% include 'filter_panel.html' %}
+
+        <main class="flex-1 relative bg-white viewport-container w-full h-full" id="viewport">
+            <div class="absolute bottom-4 left-4 pointer-events-none z-10">
+                <div id="status-indicator" class="flex items-center space-x-2 bg-white/80 px-3 py-1.5 rounded-full border border-slate-200 backdrop-blur-sm shadow-sm transition-colors duration-300">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span id="status-text" class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Editor Mode</span>
+                </div>
+            </div>
+        </main>
+
+        <aside id="right-panel" class="w-64 border-l border-slate-200 flex flex-col">
+            <button id="toggle-right-panel" class="drawer-toggle-btn">
+                <i class="fa-solid fa-chevron-right" id="toggle-icon"></i>
+            </button>
+
+            <div id="panel-content" class="flex-1 flex flex-col overflow-hidden w-64">
+                <div class="p-1">
+                    {% include 'room_settings.html' %}
+                </div>
+
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Інвентар сцени</h3>
+                    <span id="sensor-count" class="bg-blue-100 px-2 py-0.5 rounded text-[9px] text-blue-600 font-bold">0</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-4 no-scrollbar bg-white" id="object-list"></div>
+            </div>
+        </aside>
+    </div>
+
+    {% include 'device_modal.html' %}
+
+    <script type="module">
+        import { initScene } from '/static/js/scene_setup.js';
+        import { initSensorPlacement } from '/static/js/sensors.js';
+        import { initLabelRenderer } from '/static/js/labels.js';
+        import { initUI } from '/static/js/ui_manager.js';
+        import { initAdminTool } from '/static/js/admin_tool.js';
+        import { RoomManager } from '/static/js/room_manager.js';
+        import { Simulator } from '/static/js/simulator.js';
+
+        // Ініціалізація
+        const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
+        const container = document.getElementById('viewport');
+        const labelRenderer = initLabelRenderer(container);
+        window.controls = controls;
+
+        const room = new RoomManager(scene, camera, renderer);
+        const simulator = new Simulator(scene);
+        draggableObjects.push(room.floor, room.wallMesh);
+
+        let selectedSensor = { type: 'temp', color: 0x3b82f6 };
+        const uiManager = initUI(scene, camera, controls, (newConfig) => {
+            selectedSensor = newConfig;
+        });
+
+        initSensorPlacement(container, scene, camera, draggableObjects, () => selectedSensor);
+        initAdminTool();
+
+        window.onWindowResizeGlobal = onWindowResize;
+
+        // --- ЛОГІКА ПЕРЕМИКАННЯ РЕЖИМІВ (ОНОВЛЕНА) ---
+        const btnEdit = document.getElementById('mode-edit');
+        const btnSimulate = document.getElementById('mode-simulate');
+        const mainSidebar = document.getElementById('main-sidebar');
+
+        // Елементи плаваючого індикатора (замість футера)
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
+
+        function setMode(isSimulate) {
+            simulator.toggle(isSimulate);
+            room.setEditorMode(!isSimulate);
+
+            // Оновлення кнопок зверху
+            btnSimulate.classList.toggle('bg-white', isSimulate);
+            btnSimulate.classList.toggle('shadow-sm', isSimulate);
+            btnSimulate.classList.toggle('text-blue-600', isSimulate);
+            btnSimulate.classList.toggle('text-slate-400', !isSimulate);
+
+            btnEdit.classList.toggle('bg-white', !isSimulate);
+            btnEdit.classList.toggle('shadow-sm', !isSimulate);
+            btnEdit.classList.toggle('text-blue-600', !isSimulate);
+            btnEdit.classList.toggle('text-slate-400', isSimulate);
+
+            // Блокування сайдбару
+            mainSidebar.style.opacity = isSimulate ? '0.5' : '1';
+            mainSidebar.style.pointerEvents = isSimulate ? 'none' : 'all';
+
+            // Оновлення плаваючого індикатора
+            if (isSimulate) {
+                statusText.textContent = "Simulation Active";
+                statusText.classList.replace('text-slate-500', 'text-green-600');
+                statusDot.classList.replace('bg-blue-500', 'bg-green-500');
+            } else {
+                statusText.textContent = "Editor Mode";
+                statusText.classList.replace('text-green-600', 'text-slate-500');
+                statusDot.classList.replace('bg-green-500', 'bg-blue-500');
+            }
+
+            if (isSimulate && window.setPlacementMode) window.setPlacementMode(false);
+        }
+
+        btnEdit.addEventListener('click', () => setMode(false));
+        btnSimulate.addEventListener('click', () => setMode(true));
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (uiManager?.updateCamera) uiManager.updateCamera(0.1);
+            if (simulator.isActive) simulator.update();
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer?.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            onWindowResize();
+            labelRenderer?.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // --- ЛОГІКА ДЛЯ ШТОРОК ---
+        const filterDrawer = document.getElementById('filter-drawer');
+        const openFilterBtn = document.getElementById('open-filter-btn');
+        const closeFilterBtn = document.getElementById('close-filter-btn');
+
+        if (openFilterBtn && filterDrawer) {
+            openFilterBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                filterDrawer.classList.toggle('open');
+                openFilterBtn.classList.toggle('text-orange-500');
+                openFilterBtn.classList.toggle('border-orange-300');
+            });
+        }
+
+        if (closeFilterBtn && filterDrawer) {
+            closeFilterBtn.addEventListener('click', () => {
+                filterDrawer.classList.remove('open');
+                openFilterBtn.classList.remove('text-orange-500', 'border-orange-300');
+            });
+        }
+
+        document.getElementById('close-drawer-btn').addEventListener('click', () => {
+            document.getElementById('device-drawer').classList.remove('open');
+            if (filterDrawer) {
+                filterDrawer.classList.remove('open');
+                if(openFilterBtn) openFilterBtn.classList.remove('text-orange-500', 'border-orange-300');
+            }
+            document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500', 'text-blue-500'));
+            if (window.setPlacementMode) window.setPlacementMode(false);
+            document.getElementById('tool-select').classList.add('active');
+        });
+
+        animate();
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const rightPanel = document.getElementById('right-panel');
+            const toggleRightBtn = document.getElementById('toggle-right-panel');
+            const toggleIcon = document.getElementById('toggle-icon');
+
+            if (toggleRightBtn && rightPanel) {
+                toggleRightBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isClosed = rightPanel.classList.toggle('closed');
+                    if (toggleIcon) {
+                        toggleIcon.style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

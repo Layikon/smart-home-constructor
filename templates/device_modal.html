@@ -1,0 +1,171 @@
+<div id="device-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] hidden backdrop-blur-sm">
+    <div class="bg-slate-900 border border-slate-700 w-[500px] rounded-xl shadow-2xl overflow-hidden">
+
+        <div class="bg-slate-800/50 p-4 border-b border-slate-700 flex justify-between items-center">
+            <h2 class="text-orange-500 font-bold flex items-center text-sm uppercase tracking-wider">
+                <i class="fa-solid fa-plus-circle mr-2"></i> Реєстрація в базі
+            </h2>
+            <button id="close-modal-x" class="text-slate-500 hover:text-white transition w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-700">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+
+        <form id="device-form" class="p-6 space-y-5">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1.5 ml-1">Клас пристрою</label>
+                    <select id="dev-type" class="w-full bg-slate-800 border border-slate-600 text-white text-xs rounded-lg p-2.5 outline-none focus:border-orange-500 appearance-none font-bold cursor-pointer">
+                        <option value="sensor">🌡️ Датчик</option>
+                        <option value="power">⚡ Живлення / Керування</option>
+                        <option value="motion">🏃 Рух / Присутність</option>
+                        <option value="camera">📹 Камера</option>
+                        <option value="hub">🌐 Хаб / Шлюз</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1.5 ml-1">Бренд</label>
+                    <select id="dev-brand" class="w-full bg-slate-800 border border-slate-600 text-white text-xs rounded-lg p-2.5 outline-none focus:border-orange-500 appearance-none font-bold cursor-pointer" required>
+                        <option value="Xiaomi">Xiaomi</option>
+                        <option value="Aqara">Aqara</option>
+                        <option value="Sonoff">Sonoff</option>
+                        <option value="Tuya">Tuya / Smart Life</option>
+                        <option value="Shelly">Shelly</option>
+                        <option value="Ajax">Ajax Systems</option>
+                        <option value="TP-Link">TP-Link Tapo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1 ml-1 uppercase font-bold">Назва моделі</label>
+                <input type="text" id="dev-name" placeholder="напр. Motion Sensor P1" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs text-white outline-none focus:border-orange-500 placeholder-slate-600" required>
+            </div>
+
+            <div id="dynamic-fields" class="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 min-h-[60px]">
+
+                <div data-type="sensor" class="field-group grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[9px] text-slate-400">Вимірювання</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
+                            <option value="temp">Температура/Волога</option>
+                            <option value="door">Відкриття</option>
+                            <option value="leak">Протікання</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400">Живлення</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
+                            <option value="battery">Батарейка</option>
+                            <option value="usb">USB 5V</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div data-type="power" class="field-group hidden grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[9px] text-slate-400">Виконання</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
+                            <option value="plug">Вилка</option>
+                            <option value="wall">Розетка</option>
+                            <option value="switch">Вимикач</option>
+                            <option value="relay">Реле</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400">Макс. Вт</label>
+                        <input type="number" placeholder="3680" class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
+                    </div>
+                </div>
+
+                <div data-type="hub" class="field-group hidden">
+                    <p class="text-[10px] text-orange-400/80 italic p-1">Реєструється як центральний вузол екосистеми.</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-400 uppercase font-bold mb-2 ml-1">Підтримувані інтерфейси (Hardware)</label>
+                <div class="grid grid-cols-3 gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                    <label class="flex items-center space-x-2 cursor-pointer group">
+                        <input type="checkbox" name="cap" value="wifi" class="accent-orange-500 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800">
+                        <span class="text-[10px] text-slate-300 group-hover:text-white transition">Wi-Fi</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer group">
+                        <input type="checkbox" name="cap" value="matter" class="accent-orange-500 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800">
+                        <span class="text-[10px] text-slate-300 group-hover:text-white transition">Matter</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer group">
+                        <input type="checkbox" name="cap" value="zigbee" class="accent-orange-500 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800">
+                        <span class="text-[10px] text-slate-300 group-hover:text-white transition">Zigbee 3.0</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer group">
+                        <input type="checkbox" name="cap" value="thread" class="accent-orange-500 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800">
+                        <span class="text-[10px] text-slate-300 group-hover:text-white transition">Thread</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer group">
+                        <input type="checkbox" name="cap" value="sub1g" class="accent-orange-500 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800">
+                        <span class="text-[10px] text-slate-300 group-hover:text-white transition">Sub-1GHz</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer group">
+                        <input type="checkbox" name="cap" value="ble" class="accent-orange-500 w-3.5 h-3.5 rounded border-slate-600 bg-slate-800">
+                        <span class="text-[10px] text-slate-300 group-hover:text-white transition">BLE Mesh</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                    <label class="block text-[9px] text-slate-500 mb-1 ml-1 uppercase font-bold">Іконка (PNG)</label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-2 rounded-l border border-r-0 border-slate-600 bg-slate-700 text-slate-400 text-[9px] font-mono">/icons/</span>
+                        <input type="text" id="dev-icon" placeholder="file.png" class="w-full bg-slate-800 border border-slate-600 rounded-r text-xs text-white p-1.5 outline-none font-mono focus:border-orange-500 placeholder-slate-600" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[9px] text-slate-500 mb-1 ml-1 uppercase font-bold">3D Модель (GLB)</label>
+                    <div class="flex opacity-60">
+                        <span class="inline-flex items-center px-2 rounded-l border border-r-0 border-slate-700 bg-slate-800 text-slate-400 text-[9px] font-mono">/models/</span>
+                        <input type="text" value="unified_sensor.glb" disabled class="w-full bg-slate-800 border border-slate-600 rounded-r text-xs text-slate-500 p-1.5 outline-none font-mono cursor-not-allowed">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t border-slate-700/50">
+                <button type="button" id="close-modal" class="px-5 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition hover:bg-slate-800">Скасувати</button>
+                <button type="submit" class="bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-2 rounded-lg text-xs font-bold text-white hover:from-orange-500 hover:to-orange-400 transition shadow-lg shadow-orange-500/20 active:scale-95 transform">
+                    <i class="fa-solid fa-save mr-1"></i> Зберегти в базу
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const classSelector = document.getElementById('dev-type');
+        const dynamicFields = document.querySelectorAll('.field-group');
+
+        function updateFields() {
+            const selectedType = classSelector.value;
+            dynamicFields.forEach(field => field.classList.add('hidden'));
+
+            const activeField = document.querySelector(`.field-group[data-type="${selectedType}"]`);
+            if (activeField) {
+                activeField.classList.remove('hidden');
+            }
+        }
+
+        classSelector.addEventListener('change', updateFields);
+        updateFields();
+
+        const modal = document.getElementById('device-modal');
+        const closeBtns = [
+            document.getElementById('close-modal'),
+            document.getElementById('close-modal-x')
+        ];
+
+        closeBtns.forEach(btn => {
+            if(btn) btn.addEventListener('click', () => modal.classList.add('hidden'));
+        });
+    });
+</script>
