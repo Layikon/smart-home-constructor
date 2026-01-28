@@ -14,15 +14,11 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
     const ghostModels = {};
     let currentGhost = null;
 
-    // --- ДОПОМІЖНА ФУНКЦІЯ ДЛЯ ПІДПИСІВ ---
     function toggleLabel(sensorObj, show) {
         sensorObj.children.forEach(child => {
             if (child.isCSS2DObject && child.element) {
-                if (show) {
-                    child.element.classList.add('visible');
-                } else {
-                    child.element.classList.remove('visible');
-                }
+                if (show) child.element.classList.add('visible');
+                else child.element.classList.remove('visible');
             }
         });
     }
@@ -37,8 +33,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
         const material = new THREE.MeshStandardMaterial({
             color: color,
             transparent: opacity < 1,
-            opacity: opacity,
-            emissive: 0x000000
+            opacity: opacity
         });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.userData.isDefault = true;
@@ -49,8 +44,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
         if (!isPlacementMode) return;
         Object.values(ghostModels).forEach(m => m.visible = false);
 
-        // Використовуємо model_path з нашого JSON
-        const modelName = sensorConfig.model_path || sensorConfig.model;
+        const modelName = sensorConfig.model_path;
 
         if (!modelName) {
             if (!ghostModels['default']) {
@@ -58,32 +52,23 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                 scene.add(ghostModels['default']);
             }
             currentGhost = ghostModels['default'];
-            currentGhost.material.color.setHex(sensorConfig.color || 0xffffff);
+            currentGhost.material.color.setHex(parseInt(sensorConfig.color || "0xffffff"));
         } else {
             if (!ghostModels[modelName]) {
-                loader.load(`/static/models/${modelName}`,
-                    (gltf) => {
-                        const model = gltf.scene;
-                        model.traverse((node) => {
-                            if (node.isMesh) {
-                                node.material = node.material.clone();
-                                node.material.transparent = true;
-                                node.material.opacity = 0.5;
-                            }
-                        });
-                        scene.add(model);
-                        ghostModels[modelName] = model;
-                        currentGhost = model;
-                        currentGhost.visible = true;
-                    },
-                    undefined,
-                    () => {
-                        console.warn(`Модель ${modelName} не знайдена.`);
-                        ghostModels[modelName] = createDefaultMesh(0xffffff, 0.5);
-                        scene.add(ghostModels[modelName]);
-                        currentGhost = ghostModels[modelName];
-                    }
-                );
+                loader.load(`/static/models/${modelName}`, (gltf) => {
+                    const model = gltf.scene;
+                    model.traverse((node) => {
+                        if (node.isMesh) {
+                            node.material = node.material.clone();
+                            node.material.transparent = true;
+                            node.material.opacity = 0.5;
+                        }
+                    });
+                    scene.add(model);
+                    ghostModels[modelName] = model;
+                    currentGhost = model;
+                    currentGhost.visible = true;
+                });
                 return;
             } else {
                 currentGhost = ghostModels[modelName];
@@ -99,7 +84,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
 
         raycaster.setFromCamera(mouse, camera);
 
-        // Логіка підсвітки вже встановлених датчиків
+        // Підсвітка при наведенні
         const allIntersects = raycaster.intersectObjects(scene.children, true);
         const sensorHit = allIntersects.find(i => {
             let p = i.object;
@@ -122,16 +107,12 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
             document.body.style.cursor = 'default';
         }
 
-        if (!isPlacementMode) return;
+        if (!isPlacementMode || !currentGhost) return;
 
-        const config = getSelectedSensor();
-        updateGhostModel(config);
-
-        // ФІЛЬТРАЦІЯ: Ігноруємо ручки (handles) при розрахунку позиції привида
         const intersects = raycaster.intersectObjects(draggableObjects, true)
             .filter(hit => !hit.object.userData.isHandle);
 
-        if (intersects.length > 0 && currentGhost) {
+        if (intersects.length > 0) {
             const hit = intersects[0];
             currentGhost.visible = true;
             currentGhost.position.copy(hit.point);
@@ -143,7 +124,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                 currentGhost.lookAt(hit.point.clone().add(worldNormal));
                 currentGhost.position.add(worldNormal.multiplyScalar(0.015));
             }
-        } else if (currentGhost) {
+        } else {
             currentGhost.visible = false;
         }
     });
@@ -155,57 +136,58 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
 
     container.addEventListener('pointerup', (event) => {
         if (!isPlacementMode || event.button !== 0) return;
-
-        const diffX = Math.abs(event.clientX - startX);
-        const diffY = Math.abs(event.clientY - startY);
-        if (diffX > 5 || diffY > 5) return;
-
-        const rect = container.getBoundingClientRect();
-        mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
-        mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+        if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) return;
 
         raycaster.setFromCamera(mouse, camera);
-
-        // ФІЛЬТРАЦІЯ: Ігноруємо ручки при встановленні
         const intersects = raycaster.intersectObjects(draggableObjects, true)
             .filter(hit => !hit.object.userData.isHandle);
 
         if (intersects.length > 0) {
             const hit = intersects[0];
             const sensorConfig = getSelectedSensor();
-            const modelPath = sensorConfig.model_path || sensorConfig.model;
 
             const finalizePlacement = (obj) => {
-                obj.userData.isSensor = true;
-                obj.userData.type = sensorConfig.type;
-                obj.userData.name = sensorConfig.name;
-                obj.position.copy(hit.point);
+                // --- ОНОВЛЕНА ЛОГІКА ДАНИХ ПРИСТРОЮ ---
+                obj.userData = {
+                    isSensor: true,
+                    id: sensorConfig.id,
+                    type: sensorConfig.type,
+                    brand: sensorConfig.brand,
+                    name: sensorConfig.name,
+                    // Зберігаємо протоколи в самому об'єкті на сцені
+                    capabilities: sensorConfig.capabilities || [],
+                    features: sensorConfig.features || {},
+                    isConnected: false, // чи підключений до хаба
+                    hubId: null        // ID хаба, до якого підключений
+                };
 
+                obj.position.copy(hit.point);
                 if (hit.face) {
                     const worldNormal = hit.face.normal.clone();
                     const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
                     worldNormal.applyMatrix3(normalMatrix).normalize();
                     obj.lookAt(hit.point.clone().add(worldNormal));
-                    obj.position.add(worldNormal.multiplyScalar(0.015));
+                    obj.position.add(worldNormal.multiplyScalar(0.02));
                 }
 
-                addSensorLabel(obj, sensorConfig.name || sensorConfig.type);
+                addSensorLabel(obj, sensorConfig.name);
                 scene.add(obj);
+
+                // Додаємо в масив для взаємодії
                 if (window.refreshUIList) window.refreshUIList();
+
+                console.log(`Встановлено: ${sensorConfig.name} (${sensorConfig.type}). Протоколи:`, obj.userData.capabilities);
             };
 
-            if (modelPath) {
-                loader.load(`/static/models/${modelPath}`,
-                    (gltf) => { finalizePlacement(gltf.scene); },
-                    undefined,
-                    () => { finalizePlacement(createDefaultMesh(sensorConfig.color || 0xff0000)); }
-                );
+            if (sensorConfig.model_path) {
+                loader.load(`/static/models/${sensorConfig.model_path}`, (gltf) => finalizePlacement(gltf.scene));
             } else {
-                finalizePlacement(createDefaultMesh(sensorConfig.color || 0xff0000));
+                finalizePlacement(createDefaultMesh(sensorConfig.color || 0x3b82f6));
             }
         }
     });
 
+    // Видалення на ПКМ
     container.addEventListener('contextmenu', (event) => {
         event.preventDefault();
         raycaster.setFromCamera(mouse, camera);

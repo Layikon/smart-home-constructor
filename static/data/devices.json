@@ -9,14 +9,14 @@
       "icon_file": "0.png",
       "color": "0x3b82f6",
       "model_path": "temp_sensor.glb",
-      "protocol": "Zigbee",
+      "capabilities": [
+        "zigbee"
+      ],
       "features": {
         "precision": "±0.3°C",
         "battery": "CR2032",
-        "frequency": "2.4 GHz",
         "range_m": 15,
-        "requires_hub": true,
-        "interacts_with": ["hub", "power", "temp"]
+        "requires_hub": true
       }
     },
     {
@@ -28,13 +28,14 @@
       "icon_file": "2.png",
       "color": "0x0ea5e9",
       "model_path": "hum_sensor.glb",
-      "protocol": "BLE",
+      "capabilities": [
+        "ble"
+      ],
       "features": {
         "display": "LCD",
         "range_max": "100%",
         "range_m": 8,
-        "frequency": "2.4 GHz",
-        "interacts_with": ["hub", "hum"]
+        "requires_hub": true
       }
     },
     {
@@ -46,13 +47,14 @@
       "icon_file": "3.png",
       "color": "0x10b981",
       "model_path": "motion_sensor.glb",
-      "protocol": "Zigbee",
+      "capabilities": [
+        "zigbee"
+      ],
       "features": {
         "detection_range": 6,
         "detection_angle": 110,
         "range_m": 12,
-        "frequency": "2.4 GHz",
-        "interacts_with": ["hub", "camera", "power"]
+        "requires_hub": true
       }
     },
     {
@@ -64,13 +66,15 @@
       "icon_file": "1.png",
       "color": "0xf59e0b",
       "model_path": "socket.glb",
-      "protocol": "Wi-Fi",
+      "capabilities": [
+        "wifi",
+        "matter"
+      ],
       "features": {
         "max_load_watts": 2500,
         "power_monitoring": true,
-        "frequency": "2.4 GHz",
         "range_m": 30,
-        "interacts_with": ["temp", "motion", "hum"]
+        "requires_hub": false
       }
     },
     {
@@ -82,13 +86,16 @@
       "icon_file": "5.png",
       "color": "0x64748b",
       "model_path": "camera.glb",
-      "protocol": "Wi-Fi",
+      "capabilities": [
+        "wifi",
+        "ethernet"
+      ],
       "features": {
         "resolution": "2K",
         "night_vision": true,
         "rotation_angle": 360,
         "range_m": 25,
-        "interacts_with": ["motion", "hub"]
+        "requires_hub": false
       }
     },
     {
@@ -100,11 +107,39 @@
       "icon_file": "6.png",
       "color": "0x000000",
       "model_path": "hub.glb",
-      "protocol": "Zigbee 3.0/Wi-Fi",
+      "capabilities": [
+        "wifi",
+        "ethernet"
+      ],
       "features": {
         "is_master": true,
-        "range_m": 30,
-        "interacts_with": ["Zigbee", "BLE", "Wi-Fi"]
+        "serves_protocols": [
+          "zigbee",
+          "ble",
+          "ir"
+        ],
+        "range_m": 50
+      }
+    },
+    {
+      "id": "tp-link_4490",
+      "brand": "TP-Link",
+      "name": "Hub",
+      "type": "hub",
+      "icon_file": "3.png",
+      "model_path": "hub.glb",
+      "capabilities": [
+        "wifi",
+        "matter",
+        "sub1g"
+      ],
+      "features": {
+        "requires_hub": false,
+        "is_master": true,
+        "serves_protocols": [
+          "matter",
+          "sub1g"
+        ]
       }
     }
   ]

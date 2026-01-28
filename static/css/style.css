@@ -307,3 +307,17 @@ canvas {
 #toggle-icon {
     transition: transform 0.3s ease;
 }
+/* Коли кнопка хаба активна або на неї навели мишку */
+.sensor-btn:hover .text-indigo-500,
+.sensor-btn.active .text-indigo-500 {
+    color: #3b82f6 !important; /* Змінюємо індиго на стандартний синій при активності */
+}
+
+/* Стиль для іконки хаба у правій панелі (список об'єктів) */
+.text-indigo-500 {
+    color: #6366f1; /* Indigo-500 колір */
+}
+
+.border-indigo-200 {
+    border-color: #e0e7ff; /* Indigo-200 колір для бордера */
+}

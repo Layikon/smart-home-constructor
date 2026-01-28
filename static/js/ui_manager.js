@@ -26,45 +26,48 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     }
 
     // 1. Рендеримо іконки в сайдбар (Світлий стиль)
-    function renderCategoryIcons(library) {
-        sensorsContainer.innerHTML = '';
-        const types = [...new Set(library.map(d => d.type))];
+   function renderCategoryIcons(library) {
+    sensorsContainer.innerHTML = '';
+    // Отримуємо унікальні типи, включаючи hub
+    const types = [...new Set(library.map(d => d.type))];
 
-        types.forEach(type => {
-            const btn = document.createElement('button');
-            // Оновлено кольори ховера та бордера на блакитний (Zircon Style)
-            btn.className = `sensor-btn text-slate-400 hover:text-blue-500 text-xl p-2 w-full transition border-l-2 border-transparent`;
+    types.forEach(type => {
+        const btn = document.createElement('button');
+        btn.className = `sensor-btn text-slate-400 hover:text-blue-500 text-xl p-2 w-full transition border-l-2 border-transparent`;
 
-            let iconClass = 'fa-gear';
-            // Використовуємо м'якші кольори для світлої теми
-            if (type === 'temp') iconClass = 'fa-temperature-high text-rose-400';
-            if (type === 'hum') iconClass = 'fa-droplet text-sky-400';
-            if (type === 'motion') iconClass = 'fa-person-walking text-emerald-400';
-            if (type === 'power') iconClass = 'fa-bolt text-amber-400';
-            if (type === 'camera') iconClass = 'fa-video text-slate-400';
+        let iconClass = 'fa-gear';
+        // Визначаємо іконку залежно від типу
+        if (type === 'temp') iconClass = 'fa-temperature-high text-rose-400';
+        if (type === 'hum') iconClass = 'fa-droplet text-sky-400';
+        if (type === 'motion') iconClass = 'fa-person-walking text-emerald-400';
+        if (type === 'power') iconClass = 'fa-bolt text-amber-400';
+        if (type === 'camera') iconClass = 'fa-video text-slate-400';
+        if (type === 'hub') iconClass = 'fa-circle-nodes text-indigo-500';
+        // --------------------------------
 
-            btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+        btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
 
-            btn.onclick = () => {
-                // Замінено помаранчевий на блакитний акцент
-                document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
-                btn.classList.add('active', 'border-blue-500');
-                selectToolBtn.classList.remove('active');
+        btn.onclick = () => {
+            document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
+            btn.classList.add('active', 'border-blue-500');
+            selectToolBtn.classList.remove('active');
 
-                const firstDevice = library.find(d => d.type === type);
-                const catName = firstDevice.category || 'Інше';
-                openDrawer(catName, type);
-            };
-            sensorsContainer.appendChild(btn);
-        });
-    }
+            const firstDevice = library.find(d => d.type === type);
+            // Якщо для хаба в JSON категорія "Керування", він відкриє відповідну групу
+            const catName = firstDevice.category || 'Керування';
+            openDrawer(catName, type);
+        };
+        sensorsContainer.appendChild(btn);
+    });
+}
 
     function openDrawer(categoryName, deviceType) {
         const friendlyTitles = {
             'Клімат': 'Клімат та температура',
             'Безпека': 'Системи безпеки',
             'Електрика': 'Енергоспоживання',
-            'Камери': 'Системи відеонагляду'
+            'Камери': 'Системи відеонагляду',
+            'Керування': 'Центральні хаби' // Додано заголовок
         };
 
         drawerTitle.textContent = friendlyTitles[categoryName] || categoryName;
@@ -96,9 +99,12 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         drawerContent.innerHTML = '';
         devices.forEach((device) => {
             const item = document.createElement('div');
-            item.className = 'drawer-item hover:bg-slate-50 transition-colors'; // Світлий ховер
+            item.className = 'drawer-item hover:bg-slate-50 transition-colors';
 
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
+
+            // Відображаємо перший протокол або "No Prot."
+            const mainProtocol = device.capabilities && device.capabilities.length > 0 ? device.capabilities[0] : 'N/A';
 
             item.innerHTML = `
                 <div class="icon-wrapper border-slate-100 bg-white shadow-sm">
@@ -107,18 +113,23 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                 <div class="flex flex-col overflow-hidden">
                     <div class="flex items-center gap-2">
                         <span class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter opacity-80">${device.brand}</span>
-                        <span class="text-[8px] bg-slate-100 px-1 rounded text-slate-500 font-mono">${device.protocol}</span>
+                        <span class="text-[8px] bg-slate-100 px-1 rounded text-slate-500 font-mono uppercase">${mainProtocol}</span>
                     </div>
                     <span class="text-[11px] text-slate-700 font-bold leading-tight truncate">${device.name}</span>
                 </div>
             `;
 
             item.onclick = () => {
+                // ОНОВЛЕНО: Тепер передаємо повний об'єкт технічних характеристик
                 const sensorConfig = {
+                    id: device.id,
+                    brand: device.brand,
                     type: device.type,
-                    color: parseInt(device.color),
-                    model: device.model_path,
-                    name: `${device.brand} ${device.name}`
+                    name: `${device.brand} ${device.name}`,
+                    model_path: device.model_path,
+                    color: device.color,
+                    capabilities: device.capabilities || [],
+                    features: device.features || {}
                 };
                 if (window.setPlacementMode) window.setPlacementMode(true);
                 onSensorSelectCallback(sensorConfig);
@@ -133,7 +144,8 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         'hum': { label: 'Вологість', color: 'text-sky-500', border: 'border-sky-200' },
         'motion': { label: 'Рух', color: 'text-emerald-500', border: 'border-emerald-200' },
         'power': { label: 'Живлення', color: 'text-amber-500', border: 'border-amber-200' },
-        'camera': { label: 'Камери', color: 'text-slate-500', border: 'border-slate-200' }
+        'camera': { label: 'Камери', color: 'text-slate-500', border: 'border-slate-200' },
+        'hub': { label: 'Хаби', color: 'text-indigo-500', border: 'border-indigo-200' } // Додано лейбл для хабів
     };
 
     window.refreshUIList = function() {
@@ -150,14 +162,12 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         Object.keys(typeLabels).forEach(type => {
             if (groups[type]) {
                 const header = document.createElement('div');
-                // Оновлено бордери на світлі
                 header.className = `flex items-center space-x-2 border-b-2 ${typeLabels[type].border} pb-1 mb-2 mt-4`;
                 header.innerHTML = `<span class="text-[10px] font-black uppercase ${typeLabels[type].color}">${typeLabels[type].label}</span>`;
                 objectListContainer.appendChild(header);
 
                 groups[type].forEach((s) => {
                     const item = document.createElement('div');
-                    // Світлі фони для карток у списку
                     item.className = "flex items-center justify-between bg-white border border-slate-100 p-2 rounded-lg text-[10px] hover:border-blue-300 hover:shadow-sm transition cursor-pointer group mb-1";
                     item.onclick = (e) => {
                         if (e.target.closest('button')) return;
