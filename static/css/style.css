@@ -19,7 +19,6 @@ canvas {
 }
 
 /* --- СПІЛЬНІ СТИЛІ ДЛЯ БОКОВИХ КНОПОК-СТРІЛОК --- */
-/* Це дозволяє кнопкам виглядати однаково з обох боків */
 .drawer-toggle-btn {
     position: absolute;
     top: 50%;
@@ -32,7 +31,7 @@ canvas {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 60; /* Високий пріоритет кліку */
+    z-index: 60;
     color: #94a3b8;
     outline: none;
     transition: all 0.2s ease;
@@ -50,14 +49,14 @@ canvas {
     right: 0;
     top: 0;
     bottom: 0;
-    z-index: 50; /* Вище за сцену */
+    z-index: 50;
 
     background-color: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(8px);
     box-shadow: -5px 0 20px rgba(0,0,0,0.05);
 
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: visible !important; /* Щоб кнопку було видно збоку */
+    overflow: visible !important;
     flex-shrink: 0;
 }
 
@@ -73,7 +72,6 @@ canvas {
     display: none;
 }
 
-/* Специфічні стилі кнопки ПРАВОЇ панелі (стирчить вліво) */
 #toggle-right-panel {
     left: -24px;
     border-right: none;
@@ -84,7 +82,7 @@ canvas {
 /* --- ЛІВА ШТОРКА ПРИСТРОЇВ (DEVICE DRAWER) --- */
 .device-drawer {
     position: absolute;
-    left: 64px; /* Відступ ширини лівого тулбару */
+    left: 64px;
     top: 0;
     bottom: 0;
     width: 240px;
@@ -93,13 +91,13 @@ canvas {
     backdrop-filter: blur(12px);
     border-right: 1px solid #e2e8f0;
 
-    z-index: 60; /* Найвищий пріоритет (вище фільтрів) */
+    z-index: 60;
     display: flex;
     flex-direction: column;
 
-    transform: translateX(-100%); /* За замовчуванням схована */
+    transform: translateX(-100%);
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-    overflow: visible !important; /* Щоб кнопку було видно збоку */
+    overflow: visible !important;
 }
 
 .device-drawer.open {
@@ -107,7 +105,6 @@ canvas {
     box-shadow: 20px 0 25px -5px rgba(0, 0, 0, 0.05);
 }
 
-/* Специфічні стилі кнопки ЛІВОЇ панелі (стирчить вправо) */
 #close-drawer-btn {
     right: -24px;
     border-left: none;
@@ -118,7 +115,6 @@ canvas {
 /* --- ШТОРКА ФІЛЬТРІВ (НОВЕ) --- */
 .filter-drawer {
     position: absolute;
-    /* 64px (лівий тулбар) + 240px (ширина device-drawer) = 304px */
     left: 304px;
     top: 0;
     bottom: 0;
@@ -128,11 +124,8 @@ canvas {
     border-right: 1px solid #e2e8f0;
     box-shadow: 10px 0 15px -3px rgba(0, 0, 0, 0.05);
 
-    /* Z-index 55: нижче device-drawer (60), щоб виїжджати "з-під" нього,
-       але вище сцени (0-10) і правої панелі (50), якщо перетнуться */
     z-index: 55;
 
-    /* Початковий стан: зміщена вліво на 100% своєї ширини */
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
@@ -141,13 +134,11 @@ canvas {
 }
 
 .filter-drawer.open {
-    /* Кінцевий стан: стає рівно поруч із device-drawer */
     transform: translateX(0);
     opacity: 1;
     pointer-events: auto;
 }
 
-/* Стилі кнопок всередині фільтра */
 .filter-opt-btn {
     border: 1px solid #e2e8f0;
     border-radius: 4px;
@@ -209,13 +200,12 @@ canvas {
     background: #cbd5e1;
     border-radius: 2px;
 }
-/* Приховуємо скрол для горизонтальних списків, якщо потрібно */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
 .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* --- ПЛАВАЮЧІ ПІДПИСИ --- */
@@ -307,17 +297,21 @@ canvas {
 #toggle-icon {
     transition: transform 0.3s ease;
 }
-/* Коли кнопка хаба активна або на неї навели мишку */
+
+/* --- ВИПРАВЛЕННЯ КОЛЬОРІВ ДЛЯ ХАБА --- */
+
+/* Встановлюємо насичений колір для іконки хаба (Indigo) */
+.text-indigo-500 {
+    color: #4f46e5 !important; /* Indigo 600 для кращої видимості */
+}
+
+/* При наведенні або коли кнопка активна, колір стає Blue 600 */
 .sensor-btn:hover .text-indigo-500,
 .sensor-btn.active .text-indigo-500 {
-    color: #3b82f6 !important; /* Змінюємо індиго на стандартний синій при активності */
+    color: #2563eb !important;
 }
 
-/* Стиль для іконки хаба у правій панелі (список об'єктів) */
-.text-indigo-500 {
-    color: #6366f1; /* Indigo-500 колір */
-}
-
+/* Специфічний колір бордера для хаба у правій панелі */
 .border-indigo-200 {
-    border-color: #e0e7ff; /* Indigo-200 колір для бордера */
+    border-color: #a5b4fc !important; /* Indigo 300 */
 }

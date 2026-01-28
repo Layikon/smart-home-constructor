@@ -43,12 +43,14 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
             let iconClass = 'fa-gear';
             // Визначаємо іконку залежно від типу
-            if (type === 'temp') iconClass = 'fa-temperature-high text-rose-400';
+            if (type === 'temp' || type === 'sensor') iconClass = 'fa-temperature-high text-rose-400';
             if (type === 'hum') iconClass = 'fa-droplet text-sky-400';
             if (type === 'motion') iconClass = 'fa-person-walking text-emerald-400';
             if (type === 'power') iconClass = 'fa-bolt text-amber-400';
             if (type === 'camera') iconClass = 'fa-video text-slate-400';
-            if (type === 'hub') iconClass = 'fa-circle-nodes text-indigo-500';
+
+            // Змінено іконку хаба на microchip для стабільності
+            if (type === 'hub') iconClass = 'fa-microchip text-indigo-500';
 
             btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
 
@@ -58,7 +60,6 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                 selectToolBtn.classList.remove('active');
 
                 const firstDevice = library.find(d => d.type === type);
-                // Пріоритет: Категорія з JSON -> 'Керування' для хабів -> 'Інше'
                 const catName = firstDevice.category || (type === 'hub' ? 'Керування' : 'Інше');
                 openDrawer(catName, type);
             };
@@ -99,19 +100,13 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         drawer.classList.add('open');
     }
 
-    // 2. Рендер списку моделей (Світла тема)
     function renderDrawerContent(devices) {
         drawerContent.innerHTML = '';
         devices.forEach((device) => {
             const item = document.createElement('div');
             item.className = 'drawer-item hover:bg-slate-50 transition-colors';
-
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
-
-            // Відображаємо протокол (масив capabilities)
-            const mainProtocol = (device.capabilities && device.capabilities.length > 0)
-                ? device.capabilities[0]
-                : (device.protocol || 'N/A');
+            const mainProtocol = (device.capabilities && device.capabilities.length > 0) ? device.capabilities[0] : (device.protocol || 'N/A');
 
             item.innerHTML = `
                 <div class="icon-wrapper border-slate-100 bg-white shadow-sm">
@@ -144,9 +139,9 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         });
     }
 
-    // 3. Права панель (Список встановлених датчиків)
     const typeLabels = {
         'temp': { label: 'Температура', color: 'text-rose-500', border: 'border-rose-200' },
+        'sensor': { label: 'Датчики', color: 'text-blue-500', border: 'border-blue-200' },
         'hum': { label: 'Вологість', color: 'text-sky-500', border: 'border-sky-200' },
         'motion': { label: 'Рух', color: 'text-emerald-500', border: 'border-emerald-200' },
         'power': { label: 'Живлення', color: 'text-amber-500', border: 'border-amber-200' },
@@ -157,11 +152,8 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     window.refreshUIList = function() {
         objectListContainer.innerHTML = '';
         const sensors = scene.children.filter(obj => obj.userData && obj.userData.isSensor === true);
-
-        // Оновлюємо лічильник пристроїв на сцені
         const counter = document.getElementById('sensor-count');
         if (counter) counter.textContent = sensors.length;
-
         const groups = {};
         sensors.forEach(s => {
             const type = s.userData.type;
@@ -170,7 +162,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         });
 
         Object.keys(typeLabels).forEach(type => {
-            if (groups[type]) {
+            if (groups[type] && groups[type].length > 0) {
                 const header = document.createElement('div');
                 header.className = `flex items-center space-x-2 border-b-2 ${typeLabels[type].border} pb-1 mb-2 mt-4`;
                 header.innerHTML = `<span class="text-[10px] font-black uppercase ${typeLabels[type].color}">${typeLabels[type].label}</span>`;
