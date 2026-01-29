@@ -27,9 +27,10 @@ export function initAdminTool() {
         const brand = document.getElementById('dev-brand').value;
         const name = document.getElementById('dev-name').value;
 
-        // Нова логіка: отримуємо конкретний підтип датчика (температура чи вологість)
-        const sensorSubtypeSelect = document.querySelector('#dynamic-fields [data-type="temp"] select');
-        const sensorSubtype = sensorSubtypeSelect ? sensorSubtypeSelect.value : 'temp';
+        // Універсальна логіка: шукаємо активне (не приховане) поле підтипу (temp, hum, leak, switch тощо)
+        const activeGroup = document.querySelector(`.field-group:not(.hidden)`);
+        const subtypeSelect = activeGroup ? activeGroup.querySelector('select') : null;
+        const subType = subtypeSelect ? subtypeSelect.value : rawType;
 
         // Автододавання розширення для іконки
         let iconValue = document.getElementById('dev-icon').value.trim();
@@ -37,11 +38,10 @@ export function initAdminTool() {
             iconValue += '.png';
         }
 
-        // 3. Синхронізація з ui_manager.js
-        // Виправляємо мапінг: якщо вибрано "sensor", дивимось на підтип (temp або hum)
+        // 3. Синхронізація з фіксованою структурою ui_manager.js
         const typeMapping = {
-            'sensor': sensorSubtype, // Тут тепер буде або 'temp', або 'hum'
-            'power': 'power',
+            'sensor': subType,
+            'power': (subType === 'plug' || subType === 'wall') ? 'power' : subType, // Розетки групуємо в 'power'
             'motion': 'motion',
             'camera': 'camera',
             'hub': 'hub'
@@ -49,27 +49,33 @@ export function initAdminTool() {
 
         const finalType = typeMapping[rawType] || rawType;
 
-        // Автоматично визначаємо категорію
+        // Автоматичний розподіл по твоїх 5 основних категоріях
         const categoryMapping = {
-            'temp': 'Клімат',
-            'hum': 'Клімат',
-            'power': 'Електрика',
-            'motion': 'Безпека',
+            // Клімат
+            'temp': 'Клімат', 'hum': 'Клімат', 'air': 'Клімат', 'press': 'Клімат',
+            // Безпека
+            'motion': 'Безпека', 'door': 'Безпека', 'leak': 'Безпека', 'smoke': 'Безпека', 'gas': 'Безпека',
+            // Електрика
+            'power': 'Електрика', 'switch': 'Електрика', 'relay': 'Електрика', 'light': 'Електрика',
+            // Камери
             'camera': 'Камери',
+            // Керування
             'hub': 'Керування'
         };
 
-        // Карта 3D-моделей
+        // Карта 3D-моделей (використовуємо наявні або дефолтну)
         const modelMap = {
             'temp': 'temp_sensor.glb',
             'hum': 'hum_sensor.glb',
             'motion': 'motion_sensor.glb',
             'power': 'socket.glb',
+            'switch': 'socket.glb',
+            'relay': 'socket.glb',
             'camera': 'camera.glb',
             'hub': 'hub.glb'
         };
 
-        // 4. Формуємо об'єкт пристрою
+        // 4. Формуємо об'єкт пристрою для бази даних
         const newDevice = {
             id: `${brand.toLowerCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-4)}`,
             brand: brand,
@@ -80,11 +86,12 @@ export function initAdminTool() {
             model_path: modelMap[finalType] || "unified_sensor.glb",
             capabilities: hardwareCaps,
             features: {
-                requires_hub: ['temp', 'hum', 'motion'].includes(finalType)
+                // Всі ці пристрої потребують хаба для роботи в екосистемі
+                requires_hub: ['temp', 'hum', 'air', 'press', 'motion', 'door', 'leak', 'smoke', 'gas', 'switch', 'relay', 'light'].includes(finalType)
             }
         };
 
-        // Спеціальна логіка для ХАБІВ
+        // Спеціальна логіка для ХАБІВ (вони самі є майстрами)
         if (finalType === 'hub') {
             newDevice.features.is_master = true;
             newDevice.features.serves_protocols = hardwareCaps.filter(cap => cap !== 'wifi' && cap !== 'ethernet');
@@ -98,7 +105,7 @@ export function initAdminTool() {
             });
 
             if (response.ok) {
-                console.log("Пристрій додано:", newDevice);
+                console.log("Пристрій успішно розподілено:", newDevice);
                 modal.classList.add('hidden');
                 form.reset();
                 window.location.reload();

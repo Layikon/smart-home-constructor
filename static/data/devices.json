@@ -130,6 +130,36 @@
           "sub1g"
         ]
       }
+    },
+    {
+      "id": "xiaomi_5792",
+      "brand": "Xiaomi",
+      "category": "Безпека",
+      "name": "ьдлдь",
+      "type": "leak",
+      "icon_file": "2.png",
+      "model_path": "unified_sensor.glb",
+      "capabilities": [
+        "sub1g"
+      ],
+      "features": {
+        "requires_hub": true
+      }
+    },
+    {
+      "id": "xiaomi_7868",
+      "brand": "Xiaomi",
+      "category": "Безпека",
+      "name": "уапуп",
+      "type": "door",
+      "icon_file": "2.png",
+      "model_path": "unified_sensor.glb",
+      "capabilities": [
+        "matter"
+      ],
+      "features": {
+        "requires_hub": true
+      }
     }
   ]
 }
