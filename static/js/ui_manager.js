@@ -10,65 +10,85 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     const drawerContent = document.getElementById('drawer-content');
     const filterContainer = document.getElementById('brand-filter-container');
 
-    // Нові елементи для розширених фільтрів
     const filterDrawer = document.getElementById('filter-drawer');
     const closeFilterBtn = document.getElementById('close-filter-btn');
 
     let cameraTarget = null;
     let orbitTarget = null;
-    let deviceLibrary = [];
+    let deviceLibrary = []; // Тут будуть пристрої поточної категорії
 
-    // --- СТАТИЧНА СТРУКТУРА ІНТЕРФЕЙСУ ---
+    // --- СТАТИЧНА СТРУКТУРА ІНТЕРФЕЙСУ ТА ВІДПОВІДНІ ФАЙЛИ ---
     const UI_STRUCTURE = {
         'Клімат': {
             icon: 'fa-thermometer-half',
             color: 'text-rose-400',
-            subtypes: ['temp', 'hum', 'air', 'press']
+            subtypes: ['temp/hum', 'air', 'press'], // ОНОВЛЕНО на об'єднаний тип
+            file: 'climate_devices.json'
         },
         'Безпека': {
-            icon: 'fa-shield-halved',
+            icon: 'fa-shield-alt',
             color: 'text-emerald-400',
-            subtypes: ['motion', 'door', 'leak', 'smoke', 'gas']
+            subtypes: ['motion', 'door', 'leak', 'smoke', 'gas'],
+            file: 'security_devices.json'
         },
         'Електрика': {
             icon: 'fa-bolt',
             color: 'text-amber-400',
-            subtypes: ['power', 'switch', 'relay', 'light']
+            subtypes: ['power', 'switch', 'relay', 'light'],
+            file: 'electricity_devices.json'
         },
         'Камери': {
             icon: 'fa-video',
             color: 'text-slate-400',
-            subtypes: ['camera']
+            subtypes: ['camera'],
+            file: 'cameras.json'
         },
         'Керування': {
             icon: 'fa-microchip',
             color: 'text-indigo-500',
-            subtypes: ['hub']
+            subtypes: ['hub'],
+            file: 'hubs.json'
         }
     };
 
     const subCategoryLabels = {
-        'temp': 'Термометри', 'hum': 'Вологість', 'air': 'Повітря', 'press': 'Тиск',
-        'motion': 'Рух', 'door': 'Відкриття', 'leak': 'Протікання', 'smoke': 'Дим', 'gas': 'Газ',
-        'power': 'Розетки', 'switch': 'Вимикачі', 'relay': 'Реле', 'light': 'Світло',
-        'camera': 'Камери', 'hub': 'Хаби'
+        'temp/hum': 'Термометри/Волога', // ОНОВЛЕНО
+        'air': 'Повітря',
+        'press': 'Тиск',
+        'motion': 'Рух',
+        'door': 'Відкриття',
+        'leak': 'Протікання',
+        'smoke': 'Дим',
+        'gas': 'Газ',
+        'power': 'Розетки',
+        'switch': 'Вимикачі',
+        'relay': 'Реле',
+        'light': 'Світло',
+        'camera': 'Камери',
+        'hub': 'Хаби'
     };
 
-    // Обробка закриття фільтрів
     if (closeFilterBtn) {
         closeFilterBtn.onclick = () => {
             filterDrawer.classList.remove('open');
         };
     }
 
-    async function loadDeviceLibrary() {
+    // Динамічне завантаження пристроїв за категорією
+    async function loadCategoryDevices(categoryName) {
+        const config = UI_STRUCTURE[categoryName];
+        if (!config) return;
+
         try {
-            const response = await fetch(`/static/data/devices.json?t=${Date.now()}`);
+            const response = await fetch(`/static/data/${config.file}?t=${Date.now()}`);
+            if (!response.ok) throw new Error('Файл не знайдено');
             const data = await response.json();
-            deviceLibrary = data.library;
-            renderFixedSidebar();
+            deviceLibrary = data.library || [];
+            return deviceLibrary;
         } catch (error) {
-            console.error("Помилка завантаження бібліотеки:", error);
+            console.error(`Помилка завантаження ${config.file}:`, error);
+            deviceLibrary = [];
+            return [];
         }
     }
 
@@ -79,10 +99,13 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             const btn = document.createElement('button');
             btn.className = `sensor-btn text-slate-400 hover:text-blue-500 text-xl p-2 w-full transition border-l-2 border-transparent`;
             btn.innerHTML = `<i class="fa-solid ${config.icon} ${config.color}"></i>`;
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
                 btn.classList.add('active', 'border-blue-500');
                 selectToolBtn.classList.remove('active');
+
+                // Завантажуємо дані саме для цієї категорії
+                await loadCategoryDevices(catName);
                 openDrawer(catName);
             };
             sensorsContainer.appendChild(btn);
@@ -92,18 +115,17 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     function openDrawer(categoryName) {
         drawerTitle.textContent = categoryName;
         const config = UI_STRUCTURE[categoryName];
-        const categoryDevices = deviceLibrary.filter(d => config.subtypes.includes(d.type));
+
+        const categoryDevices = deviceLibrary;
 
         filterContainer.innerHTML = '';
         filterContainer.className = "flex flex-col w-full border-b border-slate-100 bg-white sticky top-0 z-10";
 
-        // Кнопка Фільтр, яка тепер відкриває твою нову шторку
         const filterActionBtn = document.createElement('button');
         filterActionBtn.className = "flex items-center justify-center gap-2 w-full py-2 text-[10px] font-bold text-slate-400 hover:text-orange-500 hover:bg-slate-50 border-b border-slate-50 transition-all uppercase tracking-widest";
         filterActionBtn.innerHTML = `<i class="fa-solid fa-sliders text-[12px]"></i> Фільтри`;
 
         filterActionBtn.onclick = () => {
-            // Перемикаємо стан шторки фільтрів
             filterDrawer.classList.toggle('open');
         };
         filterContainer.appendChild(filterActionBtn);
@@ -142,7 +164,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
     function renderDrawerContent(devices) {
         drawerContent.innerHTML = '';
-        if (devices.length === 0) {
+        if (!devices || devices.length === 0) {
             drawerContent.innerHTML = '<div class="text-[10px] text-slate-400 p-4 italic text-center w-full">У цій категорії ще немає пристроїв</div>';
             return;
         }
@@ -185,9 +207,8 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     }
 
     const typeLabels = {
-        'temp': { label: 'Температура', color: 'text-rose-500', border: 'border-rose-200' },
+        'temp/hum': { label: 'Температура/Волога', color: 'text-rose-500', border: 'border-rose-200' },
         'sensor': { label: 'Датчики', color: 'text-blue-500', border: 'border-blue-200' },
-        'hum': { label: 'Вологість', color: 'text-sky-500', border: 'border-sky-200' },
         'motion': { label: 'Рух', color: 'text-emerald-500', border: 'border-emerald-200' },
         'power': { label: 'Живлення', color: 'text-amber-500', border: 'border-amber-200' },
         'camera': { label: 'Камери', color: 'text-slate-500', border: 'border-slate-200' },
@@ -248,11 +269,11 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
         selectToolBtn.classList.add('active');
         drawer.classList.remove('open');
-        filterDrawer.classList.remove('open'); // Закриваємо фільтри при виборі інструменту
+        filterDrawer.classList.remove('open');
         if (window.setPlacementMode) window.setPlacementMode(false);
     });
 
-    loadDeviceLibrary();
+    renderFixedSidebar();
 
     return {
         updateCamera: (lerpFactor) => {

@@ -1,0 +1,29 @@
+{
+    "library": [
+        {
+            "id": "dev_202620",
+            "brand": "Xiaomi",
+            "category": "Керування",
+            "name": "Tapo H100",
+            "type": "hub",
+            "subtype": "hub",
+            "icon_file": "1.png",
+            "model_path": "hub.glb",
+            "capabilities": [
+                "wifi",
+                "matter",
+                "sub1g"
+            ],
+            "features": {
+                "power": "220v",
+                "requires_hub": false,
+                "is_master": true,
+                "serves_protocols": [
+                    "matter",
+                    "sub1g"
+                ],
+                "max_devices": 128
+            }
+        }
+    ]
+}

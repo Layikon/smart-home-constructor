@@ -1,0 +1,22 @@
+{
+    "library": [
+        {
+            "id": "dev_268596",
+            "brand": "Xiaomi",
+            "category": "Електрика",
+            "name": "ХАкі",
+            "type": "switch",
+            "subtype": "switch",
+            "icon_file": "1.png",
+            "model_path": "socket.glb",
+            "capabilities": [
+                "wifi",
+                "sub1g"
+            ],
+            "features": {
+                "power": "battery",
+                "requires_hub": true
+            }
+        }
+    ]
+}

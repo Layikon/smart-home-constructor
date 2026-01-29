@@ -39,47 +39,108 @@
 
             <div>
                 <label class="block text-[10px] text-slate-500 mb-1 ml-1 uppercase font-bold">Назва моделі</label>
-                <input type="text" id="dev-name" placeholder="напр. Motion Sensor P1" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs text-white outline-none focus:border-orange-500 placeholder-slate-600" required>
+                <input type="text" id="dev-name" placeholder="напр. Hub M2 / Motion Sensor" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs text-white outline-none focus:border-orange-500 placeholder-slate-600" required>
             </div>
 
             <div id="dynamic-fields" class="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 min-h-[60px]">
 
                 <div data-type="sensor" class="field-group grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-[9px] text-slate-400">Вимірювання</label>
-                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
-                            <option value="temp">Температура/Волога</option>
-                            <option value="door">Відкриття</option>
-                            <option value="leak">Протікання</option>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Вимірювання</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
+                            <option value="temp/hum">Температура / Вологість</option>
+                            <option value="air">Якість повітря (TVOC/CO2)</option>
+                            <option value="press">Атмосферний тиск</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-[9px] text-slate-400">Живлення</label>
-                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
-                            <option value="battery">Батарейка</option>
-                            <option value="usb">USB 5V</option>
-                        </select>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Тип живлення</label>
+                        <div class="grid grid-cols-3 gap-1 mt-1">
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="battery" class="hidden" checked>
+                                <span class="text-[8px] text-slate-300 font-bold">BAT</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="usb" class="hidden">
+                                <span class="text-[8px] text-slate-300 font-bold">USB</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="220v" class="hidden">
+                                <span class="text-[8px] text-slate-300 font-bold">220V</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
                 <div data-type="power" class="field-group hidden grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-[9px] text-slate-400">Виконання</label>
-                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
-                            <option value="plug">Вилка</option>
-                            <option value="wall">Розетка</option>
-                            <option value="switch">Вимикач</option>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Різновид</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
+                            <option value="socket">Розетка</option>
+                            <option value="switch">Вимикач (On/Off)</option>
                             <option value="relay">Реле</option>
+                            <option value="light">Світло</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-[9px] text-slate-400">Макс. Вт</label>
-                        <input type="number" placeholder="3680" class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1">
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Макс. навантаження</label>
+                        <input type="number" placeholder="3680 Вт" class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
                     </div>
                 </div>
 
-                <div data-type="hub" class="field-group hidden">
-                    <p class="text-[10px] text-orange-400/80 italic p-1">Реєструється як центральний вузол екосистеми.</p>
+                <div data-type="motion" class="field-group hidden grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Тип датчика</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
+                            <option value="gas">Газ</option>
+                            <option value="leak">Протікання (Волога)</option>
+                            <option value="smoke">Дим</option>
+                            <option value="door">Відкриття / Закриття</option>
+                            <option value="motion">Рух</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Тип живлення</label>
+                        <div class="grid grid-cols-3 gap-1 mt-1">
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="battery" class="hidden" checked>
+                                <span class="text-[8px] text-slate-300 font-bold">BAT</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="usb" class="hidden">
+                                <span class="text-[8px] text-slate-300 font-bold">USB</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="220v" class="hidden">
+                                <span class="text-[8px] text-slate-300 font-bold">220V</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div data-type="hub" class="field-group hidden grid grid-cols-2 gap-3">
+                    <div class="flex items-center">
+                        <p class="text-[10px] text-orange-400/90 italic border border-orange-500/30 bg-orange-500/10 p-2 rounded w-full">
+                            <i class="fa-solid fa-info-circle mr-1"></i> Головний шлюз керування (Master)
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Тип живлення</label>
+                        <div class="grid grid-cols-3 gap-1 mt-1">
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition opacity-50">
+                                <input type="radio" name="power" value="battery" class="hidden">
+                                <span class="text-[8px] text-slate-300 font-bold">BAT</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="usb" class="hidden" checked>
+                                <span class="text-[8px] text-slate-300 font-bold">USB</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
+                                <input type="radio" name="power" value="220v" class="hidden">
+                                <span class="text-[8px] text-slate-300 font-bold">220V</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -115,10 +176,10 @@
 
             <div class="grid grid-cols-2 gap-4 pt-2">
                 <div>
-                    <label class="block text-[9px] text-slate-500 mb-1 ml-1 uppercase font-bold">Іконка (PNG)</label>
+                    <label class="block text-[9px] text-slate-500 mb-1 ml-1 uppercase font-bold">Іконка (Авто)</label>
                     <div class="flex">
                         <span class="inline-flex items-center px-2 rounded-l border border-r-0 border-slate-600 bg-slate-700 text-slate-400 text-[9px] font-mono">/icons/</span>
-                        <input type="text" id="dev-icon" placeholder="file.png" class="w-full bg-slate-800 border border-slate-600 rounded-r text-xs text-white p-1.5 outline-none font-mono focus:border-orange-500 placeholder-slate-600" required>
+                        <input type="text" id="dev-icon" value="1.png" disabled class="w-full bg-slate-800 border border-slate-600 rounded-r text-xs text-slate-500 p-1.5 outline-none font-mono cursor-not-allowed">
                     </div>
                 </div>
                 <div>
@@ -139,6 +200,18 @@
         </form>
     </div>
 </div>
+
+<style>
+    /* Стиль для вибраних радіо-кнопок живлення */
+    input[name="power"]:checked + span {
+        color: #f97316;
+    }
+    input[name="power"]:checked + span::before {
+        content: '● ';
+        font-size: 6px;
+        vertical-align: middle;
+    }
+</style>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

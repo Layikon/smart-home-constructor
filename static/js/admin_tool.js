@@ -16,7 +16,8 @@ export function initAdminTool() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // 1. Збираємо Hardware Capabilities (Чекбокси)
+        // 1. Збираємо Hardware Capabilities (Протоколи)
+        // Саме цей масив буде визначати, що вміє хаб (Zigbee, Matter, Thread тощо)
         const hardwareCaps = [];
         document.querySelectorAll('input[name="cap"]:checked').forEach(checkbox => {
             hardwareCaps.push(checkbox.value);
@@ -27,74 +28,98 @@ export function initAdminTool() {
         const brand = document.getElementById('dev-brand').value;
         const name = document.getElementById('dev-name').value;
 
-        // Універсальна логіка: шукаємо активне (не приховане) поле підтипу (temp, hum, leak, switch тощо)
+        // Шукаємо активне поле підтипу
         const activeGroup = document.querySelector(`.field-group:not(.hidden)`);
         const subtypeSelect = activeGroup ? activeGroup.querySelector('select') : null;
         const subType = subtypeSelect ? subtypeSelect.value : rawType;
 
-        // Автододавання розширення для іконки
-        let iconValue = document.getElementById('dev-icon').value.trim();
-        if (iconValue && !iconValue.includes('.')) {
-            iconValue += '.png';
-        }
+        // Логіка для навантаження (тільки для Електрики)
+        const maxLoadInput = activeGroup ? activeGroup.querySelector('input[type="number"]') : null;
+        const maxLoadValue = maxLoadInput ? maxLoadInput.value : null;
 
-        // 3. Синхронізація з фіксованою структурою ui_manager.js
+        // Логіка для живлення (Батарейка / USB / 220V)
+        // Для хаба це теж важливо (зазвичай це USB або 220V)
+        const powerSource = document.querySelector('input[name="power"]:checked')?.value || 'usb';
+
+        // 3. Синхронізація типів
         const typeMapping = {
             'sensor': subType,
-            'power': (subType === 'plug' || subType === 'wall') ? 'power' : subType, // Розетки групуємо в 'power'
-            'motion': 'motion',
+            'power': subType,
+            'motion': subType,
             'camera': 'camera',
-            'hub': 'hub'
+            'hub': 'hub' // Хаб завжди лишається хабом
         };
 
         const finalType = typeMapping[rawType] || rawType;
 
-        // Автоматичний розподіл по твоїх 5 основних категоріях
+        // Автоматичний розподіл категорій
         const categoryMapping = {
             // Клімат
-            'temp': 'Клімат', 'hum': 'Клімат', 'air': 'Клімат', 'press': 'Клімат',
+            'temp/hum': 'Клімат', 'temp': 'Клімат', 'hum': 'Клімат', 'air': 'Клімат', 'press': 'Клімат',
             // Безпека
             'motion': 'Безпека', 'door': 'Безпека', 'leak': 'Безпека', 'smoke': 'Безпека', 'gas': 'Безпека',
             // Електрика
-            'power': 'Електрика', 'switch': 'Електрика', 'relay': 'Електрика', 'light': 'Електрика',
-            // Камери
+            'power': 'Електрика', 'socket': 'Електрика', 'switch': 'Електрика', 'relay': 'Електрика', 'light': 'Електрика',
+            // Інше
             'camera': 'Камери',
-            // Керування
             'hub': 'Керування'
         };
 
-        // Карта 3D-моделей (використовуємо наявні або дефолтну)
+        const currentCategory = categoryMapping[finalType] || 'Інше';
+
+        // Карта 3D-моделей
         const modelMap = {
-            'temp': 'temp_sensor.glb',
-            'hum': 'hum_sensor.glb',
+            'temp/hum': 'temp_sensor.glb',
             'motion': 'motion_sensor.glb',
+            'door': 'motion_sensor.glb',
+            'leak': 'motion_sensor.glb',
+            'smoke': 'motion_sensor.glb',
+            'gas': 'motion_sensor.glb',
             'power': 'socket.glb',
+            'socket': 'socket.glb',
             'switch': 'socket.glb',
             'relay': 'socket.glb',
+            'light': 'socket.glb',
             'camera': 'camera.glb',
             'hub': 'hub.glb'
         };
 
         // 4. Формуємо об'єкт пристрою для бази даних
         const newDevice = {
-            id: `${brand.toLowerCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-4)}`,
+            id: `dev_${Date.now().toString().slice(-6)}`,
             brand: brand,
-            category: categoryMapping[finalType] || 'Інше',
+            category: currentCategory,
             name: name,
             type: finalType,
-            icon_file: iconValue,
+            subtype: subType,
+            icon_file: "1.png",
             model_path: modelMap[finalType] || "unified_sensor.glb",
-            capabilities: hardwareCaps,
+            capabilities: hardwareCaps, // Тут лежать протоколи хаба
             features: {
-                // Всі ці пристрої потребують хаба для роботи в екосистемі
-                requires_hub: ['temp', 'hum', 'air', 'press', 'motion', 'door', 'leak', 'smoke', 'gas', 'switch', 'relay', 'light'].includes(finalType)
+                power: powerSource,
+                // Хаб не потребує хаба (він сам хаб), решта потребують
+                requires_hub: finalType !== 'hub' && finalType !== 'camera' && finalType !== 'wifi_socket'
             }
         };
 
-        // Спеціальна логіка для ХАБІВ (вони самі є майстрами)
+        // Додаємо макс. навантаження (для Електрики)
+        if (maxLoadValue) {
+            newDevice.max_load = maxLoadValue + "W";
+        }
+
+        // --- СПЕЦІАЛЬНА ЛОГІКА ДЛЯ ХАБІВ ---
         if (finalType === 'hub') {
+            // 1. Позначаємо, що цей пристрій керує іншими
             newDevice.features.is_master = true;
-            newDevice.features.serves_protocols = hardwareCaps.filter(cap => cap !== 'wifi' && cap !== 'ethernet');
+
+            // 2. Визначаємо протоколи, які він "роздає" (Zigbee, Thread, BLE)
+            // Виключаємо WiFi/Ethernet, бо це канали зв'язку з інтернетом, а не з датчиками
+            newDevice.features.serves_protocols = hardwareCaps.filter(cap =>
+                cap !== 'wifi' && cap !== 'ethernet'
+            );
+
+            // 3. (Опціонально) Максимальна кількість пристроїв, якщо знадобиться
+            newDevice.features.max_devices = 128;
         }
 
         try {
@@ -105,7 +130,7 @@ export function initAdminTool() {
             });
 
             if (response.ok) {
-                console.log("Пристрій успішно розподілено:", newDevice);
+                console.log("Пристрій збережено в базу:", newDevice);
                 modal.classList.add('hidden');
                 form.reset();
                 window.location.reload();

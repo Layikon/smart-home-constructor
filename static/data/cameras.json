@@ -1,0 +1,21 @@
+{
+    "library": [
+        {
+            "id": "dev_320583",
+            "brand": "Xiaomi",
+            "category": "Камери",
+            "name": "123123",
+            "type": "camera",
+            "subtype": "camera",
+            "icon_file": "1.png",
+            "model_path": "camera.glb",
+            "capabilities": [
+                "matter"
+            ],
+            "features": {
+                "power": "battery",
+                "requires_hub": false
+            }
+        }
+    ]
+}

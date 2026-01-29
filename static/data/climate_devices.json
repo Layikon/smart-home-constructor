@@ -1,0 +1,22 @@
+{
+    "library": [
+        {
+            "id": "dev_646550",
+            "brand": "Xiaomi",
+            "category": "Клімат",
+            "name": "Хуя",
+            "type": "temp/hum",
+            "icon_file": "1.png",
+            "model_path": "temp_sensor.glb",
+            "capabilities": [
+                "wifi",
+                "matter",
+                "sub1g"
+            ],
+            "features": {
+                "power": "battery",
+                "requires_hub": true
+            }
+        }
+    ]
+}

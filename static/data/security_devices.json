@@ -1,0 +1,22 @@
+{
+    "library": [
+        {
+            "id": "dev_879594",
+            "brand": "Tuya",
+            "category": "Безпека",
+            "name": "Хуяк",
+            "type": "smoke",
+            "subtype": "smoke",
+            "icon_file": "1.png",
+            "model_path": "motion_sensor.glb",
+            "capabilities": [
+                "wifi",
+                "sub1g"
+            ],
+            "features": {
+                "power": "220v",
+                "requires_hub": true
+            }
+        }
+    ]
+}
