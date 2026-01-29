@@ -7,6 +7,8 @@ export class RoomManager {
         this.scene = scene;
         this.camera = camera;
         this.renderer = renderer;
+
+        // Група кімнати, яку ми будемо рухати для ефекту розтягування
         this.roomGroup = new THREE.Group();
         this.scene.add(this.roomGroup);
 
@@ -18,20 +20,21 @@ export class RoomManager {
 
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
+        // Площина перетягування завжди на рівні підлоги (Y=0)
         this.dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         this.intersection = new THREE.Vector3();
 
-        // Оновлені матеріали (Blueprint Style)
+        // Матеріали (Optimized reuse)
         this.materials = {
             wall: new THREE.MeshPhongMaterial({
-                color: 0xd1d5db,       // Світло-сірий
+                color: 0xd1d5db,
                 transparent: true,
                 opacity: 0.25,
                 side: THREE.DoubleSide,
                 shininess: 40
             }),
             floor: new THREE.MeshPhongMaterial({
-                color: 0xffffff,       // Чисто біла підлога для контрасту
+                color: 0xffffff,
                 transparent: false,
                 opacity: 1
             }),
@@ -41,7 +44,7 @@ export class RoomManager {
                 opacity: 0.8
             }),
             edges: new THREE.LineBasicMaterial({
-                color: 0x64748b,       // Темніші контури (Slate 500)
+                color: 0x64748b,
                 transparent: true,
                 opacity: 0.5
             })
@@ -51,25 +54,21 @@ export class RoomManager {
         this.initDragLogic();
     }
 
-    // ВАЖЛИВО: Цей метод тепер правильно вписаний у клас
     setEditorMode(isVisible) {
         this.isDragging = false;
         this.activeHandle = null;
 
         if (this.handles) {
             Object.values(this.handles).forEach(handle => {
-                // 1. Приховуємо сам 3D об'єкт маніпулятора
                 handle.visible = isVisible;
-
-                // 2. Приховуємо DOM-елемент мітки через CSS
                 if (handle.userData.label && handle.userData.label.element) {
-                    handle.userData.label.element.style.visibility = isVisible ? 'visible' : 'hidden';
-                    handle.userData.label.element.style.display = isVisible ? 'block' : 'none';
+                    const style = handle.userData.label.element.style;
+                    style.visibility = isVisible ? 'visible' : 'hidden';
+                    style.display = isVisible ? 'block' : 'none';
                 }
             });
         }
 
-        // 3. Приховуємо сітку кімнати в режимі симуляції для чистоти
         if (this.grid) {
             this.grid.visible = isVisible;
         }
@@ -87,19 +86,30 @@ export class RoomManager {
         return new THREE.CSS2DObject(div);
     }
 
+    // Оновлена логіка датчиків: враховує зміщення центру кімнати
     updateSensors() {
         const { width, depth } = this.params;
-        const halfW = width / 2;
-        const halfD = depth / 2;
+        const center = this.roomGroup.position;
+
+        // Глобальні межі стін
+        const minX = center.x - width / 2;
+        const maxX = center.x + width / 2;
+        const minZ = center.z - depth / 2;
+        const maxZ = center.z + depth / 2;
+
         const tolerance = 0.5;
 
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
                 const pos = obj.position;
-                if (Math.abs(pos.x - halfW) < tolerance || pos.x > halfW) pos.x = halfW;
-                else if (Math.abs(pos.x + halfW) < tolerance || pos.x < -halfW) pos.x = -halfW;
-                if (Math.abs(pos.z - halfD) < tolerance || pos.z > halfD) pos.z = halfD;
-                else if (Math.abs(pos.z + halfD) < tolerance || pos.z < -halfD) pos.z = -halfD;
+
+                // Перевіряємо вихід за межі по X
+                if (pos.x > maxX - tolerance) pos.x = maxX;
+                else if (pos.x < minX + tolerance) pos.x = minX;
+
+                // Перевіряємо вихід за межі по Z
+                if (pos.z > maxZ - tolerance) pos.z = maxZ;
+                else if (pos.z < minZ + tolerance) pos.z = minZ;
             }
         });
     }
@@ -109,7 +119,6 @@ export class RoomManager {
         this.floor.rotation.x = -Math.PI / 2;
         this.roomGroup.add(this.floor);
 
-        // Сітка кімнати (більш насичена)
         this.grid = new THREE.GridHelper(1, 1, 0x3b82f6, 0xbfdbfe);
         this.grid.position.y = 0.01;
         this.grid.material.transparent = true;
@@ -123,6 +132,7 @@ export class RoomManager {
         this.roomGroup.add(this.wallEdges);
 
         const handleGeo = new THREE.BoxGeometry(1.2, 0.15, 0.15);
+        // Створюємо ручки один раз, далі тільки оновлюємо позиції
         this.handles = {
             right: this.createHandle('right', handleGeo),
             left: this.createHandle('left', handleGeo),
@@ -149,17 +159,22 @@ export class RoomManager {
         this.grid.scale.set(width, 1, depth);
 
         const shape = new THREE.Shape();
-        shape.moveTo(-width/2, -depth/2);
-        shape.lineTo(width/2, -depth/2);
-        shape.lineTo(width/2, depth/2);
-        shape.lineTo(-width/2, depth/2);
+        const hw = width / 2;
+        const hd = depth / 2;
+
+        // Зовнішній контур
+        shape.moveTo(-hw, -hd);
+        shape.lineTo(hw, -hd);
+        shape.lineTo(hw, hd);
+        shape.lineTo(-hw, hd);
         shape.closePath();
 
+        // Внутрішній отвір (стіни)
         const hole = new THREE.Path();
-        hole.moveTo(-width/2 + thickness, -depth/2 + thickness);
-        hole.lineTo(width/2 - thickness, -depth/2 + thickness);
-        hole.lineTo(width/2 - thickness, depth/2 - thickness);
-        hole.lineTo(-width/2 + thickness, depth/2 - thickness);
+        hole.moveTo(-hw + thickness, -hd + thickness);
+        hole.lineTo(hw - thickness, -hd + thickness);
+        hole.lineTo(hw - thickness, hd - thickness);
+        hole.lineTo(-hw + thickness, hd - thickness);
         hole.closePath();
         shape.holes.push(hole);
 
@@ -171,6 +186,7 @@ export class RoomManager {
         this.wallEdges.geometry = new THREE.EdgesGeometry(this.wallMesh.geometry);
         this.wallEdges.rotation.copy(this.wallMesh.rotation);
 
+        // Оновлення позицій ручок
         const formatDim = (val) => {
             const m = Math.floor(val);
             const cm = Math.round((val - m) * 100);
@@ -178,18 +194,21 @@ export class RoomManager {
         };
 
         const hPos = 0.1, offset = 0.6;
-        this.handles.right.position.set(width/2 + offset, hPos, 0);
+
+        this.handles.right.position.set(hw + offset, hPos, 0);
         this.handles.right.rotation.set(0, Math.PI/2, 0);
         this.handles.right.userData.label.element.textContent = formatDim(depth);
 
-        this.handles.left.position.set(-width/2 - offset, hPos, 0);
+        this.handles.left.position.set(-hw - offset, hPos, 0);
         this.handles.left.rotation.set(0, Math.PI/2, 0);
         this.handles.left.userData.label.element.textContent = formatDim(depth);
 
-        this.handles.front.position.set(0, hPos, depth/2 + offset);
+        this.handles.front.position.set(0, hPos, hd + offset);
+        this.handles.front.rotation.set(0, 0, 0);
         this.handles.front.userData.label.element.textContent = formatDim(width);
 
-        this.handles.back.position.set(0, hPos, -depth/2 - offset);
+        this.handles.back.position.set(0, hPos, -hd - offset);
+        this.handles.back.rotation.set(0, 0, 0);
         this.handles.back.userData.label.element.textContent = formatDim(width);
 
         this.updateSensors();
@@ -202,8 +221,10 @@ export class RoomManager {
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const intersects = this.raycaster.intersectObjects(Object.values(this.handles));
+
             if (intersects.length > 0) {
                 this.isDragging = true;
                 this.activeHandle = intersects[0].object;
@@ -214,16 +235,58 @@ export class RoomManager {
 
         const onMove = (e) => {
             if (!this.isDragging || !this.activeHandle) return;
+
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
             this.raycaster.setFromCamera(this.mouse, this.camera);
+
             if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersection)) {
                 const side = this.activeHandle.userData.side;
-                if (side === 'right') this.params.width = Math.max(2, this.snapValue(this.intersection.x * 2));
-                if (side === 'left') this.params.width = Math.max(2, this.snapValue(-this.intersection.x * 2));
-                if (side === 'front') this.params.depth = Math.max(2, this.snapValue(this.intersection.z * 2));
-                if (side === 'back') this.params.depth = Math.max(2, this.snapValue(-this.intersection.z * 2));
+                const currentPos = this.roomGroup.position;
+                const { width, depth } = this.params;
+
+                // --- НОВА ЛОГІКА РОЗТЯГУВАННЯ ---
+                // Ми змінюємо розмір І зміщуємо центр кімнати, щоб протилежна сторона стояла на місці
+
+                if (side === 'right') {
+                    // Ліва стіна фіксована
+                    const leftEdgeX = currentPos.x - width / 2;
+                    let newWidth = this.snapValue(this.intersection.x - leftEdgeX);
+                    if (newWidth < 2) newWidth = 2;
+
+                    this.params.width = newWidth;
+                    this.roomGroup.position.x = leftEdgeX + newWidth / 2;
+                }
+                else if (side === 'left') {
+                    // Права стіна фіксована
+                    const rightEdgeX = currentPos.x + width / 2;
+                    let newWidth = this.snapValue(rightEdgeX - this.intersection.x);
+                    if (newWidth < 2) newWidth = 2;
+
+                    this.params.width = newWidth;
+                    this.roomGroup.position.x = rightEdgeX - newWidth / 2;
+                }
+                else if (side === 'front') {
+                    // Задня стіна фіксована
+                    const backEdgeZ = currentPos.z - depth / 2;
+                    let newDepth = this.snapValue(this.intersection.z - backEdgeZ);
+                    if (newDepth < 2) newDepth = 2;
+
+                    this.params.depth = newDepth;
+                    this.roomGroup.position.z = backEdgeZ + newDepth / 2;
+                }
+                else if (side === 'back') {
+                    // Передня стіна фіксована
+                    const frontEdgeZ = currentPos.z + depth / 2;
+                    let newDepth = this.snapValue(frontEdgeZ - this.intersection.z);
+                    if (newDepth < 2) newDepth = 2;
+
+                    this.params.depth = newDepth;
+                    this.roomGroup.position.z = frontEdgeZ - newDepth / 2;
+                }
+
                 this.updateRoom();
                 this.syncUI();
             }
