@@ -1,0 +1,15 @@
+# Ігнорувати налаштування PyCharm/WebStorm
+.idea/
+
+# Ігнорувати віртуальне середовище Python
+venv/
+.venv/
+env/
+
+# Ігнорувати тимчасові файли Blender
+*.blend1
+*.blend2
+
+# Ігнорувати кеш Python
+__pycache__/
+*.py[cod]
