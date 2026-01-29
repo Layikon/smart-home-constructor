@@ -139,28 +139,6 @@ canvas {
     pointer-events: auto;
 }
 
-.filter-opt-btn {
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    padding: 6px 8px;
-    font-size: 10px;
-    font-weight: 700;
-    color: #64748b;
-    background-color: white;
-    transition: all 0.2s;
-}
-
-.filter-opt-btn:hover {
-    border-color: #fb923c;
-    color: #ea580c;
-}
-
-.filter-opt-btn.active {
-    background-color: #fff7ed;
-    border-color: #f97316;
-    color: #ea580c;
-}
-
 /* --- СТИЛІ ДЛЯ РОЗМІРНИХ МІТОК --- */
 .wall-label {
     pointer-events: none;

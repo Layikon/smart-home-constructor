@@ -10,11 +10,15 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     const drawerContent = document.getElementById('drawer-content');
     const filterContainer = document.getElementById('brand-filter-container');
 
+    // Нові елементи для розширених фільтрів
+    const filterDrawer = document.getElementById('filter-drawer');
+    const closeFilterBtn = document.getElementById('close-filter-btn');
+
     let cameraTarget = null;
     let orbitTarget = null;
     let deviceLibrary = [];
 
-    // --- СТАТИЧНА СТРУКТУРА ІНТЕРФЕЙСУ (ЯК У BLENDER) ---
+    // --- СТАТИЧНА СТРУКТУРА ІНТЕРФЕЙСУ ---
     const UI_STRUCTURE = {
         'Клімат': {
             icon: 'fa-thermometer-half',
@@ -43,47 +47,38 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         }
     };
 
-    // Словник для гарних назв підкатегорій (чіпсів)
     const subCategoryLabels = {
-        'temp': 'Термометри',
-        'hum': 'Вологість',
-        'air': 'Повітря',
-        'press': 'Тиск',
-        'motion': 'Рух',
-        'door': 'Відкриття',
-        'leak': 'Протікання',
-        'smoke': 'Дим',
-        'gas': 'Газ',
-        'power': 'Розетки',
-        'switch': 'Вимикачі',
-        'relay': 'Реле',
-        'light': 'Світло',
-        'camera': 'Камери',
-        'hub': 'Хаби'
+        'temp': 'Термометри', 'hum': 'Вологість', 'air': 'Повітря', 'press': 'Тиск',
+        'motion': 'Рух', 'door': 'Відкриття', 'leak': 'Протікання', 'smoke': 'Дим', 'gas': 'Газ',
+        'power': 'Розетки', 'switch': 'Вимикачі', 'relay': 'Реле', 'light': 'Світло',
+        'camera': 'Камери', 'hub': 'Хаби'
     };
+
+    // Обробка закриття фільтрів
+    if (closeFilterBtn) {
+        closeFilterBtn.onclick = () => {
+            filterDrawer.classList.remove('open');
+        };
+    }
 
     async function loadDeviceLibrary() {
         try {
             const response = await fetch(`/static/data/devices.json?t=${Date.now()}`);
             const data = await response.json();
             deviceLibrary = data.library;
-            renderFixedSidebar(); // Рендеримо сталий сайдбар
+            renderFixedSidebar();
         } catch (error) {
             console.error("Помилка завантаження бібліотеки:", error);
         }
     }
 
-    // 1. Рендеримо фіксований сайдбар за нашою структурою
     function renderFixedSidebar() {
         sensorsContainer.innerHTML = '';
-
         Object.keys(UI_STRUCTURE).forEach(catName => {
             const config = UI_STRUCTURE[catName];
             const btn = document.createElement('button');
             btn.className = `sensor-btn text-slate-400 hover:text-blue-500 text-xl p-2 w-full transition border-l-2 border-transparent`;
-
             btn.innerHTML = `<i class="fa-solid ${config.icon} ${config.color}"></i>`;
-
             btn.onclick = () => {
                 document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
                 btn.classList.add('active', 'border-blue-500');
@@ -94,51 +89,53 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         });
     }
 
-    // 2. Відкриваємо шторку з наперед заданими підкатегоріями
     function openDrawer(categoryName) {
-        const friendlyTitles = {
-            'Клімат': 'Клімат та середовище',
-            'Безпека': 'Системи безпеки',
-            'Електрика': 'Енергоспоживання',
-            'Камери': 'Відеонагляд',
-            'Керування': 'Центральні хаби'
-        };
-
-        drawerTitle.textContent = friendlyTitles[categoryName] || categoryName;
+        drawerTitle.textContent = categoryName;
         const config = UI_STRUCTURE[categoryName];
-
-        // Фільтруємо пристрої, які належать до ТИПІВ цієї великої категорії
         const categoryDevices = deviceLibrary.filter(d => config.subtypes.includes(d.type));
 
         filterContainer.innerHTML = '';
+        filterContainer.className = "flex flex-col w-full border-b border-slate-100 bg-white sticky top-0 z-10";
 
-        // Кнопка "Всі" для цієї категорії
+        // Кнопка Фільтр, яка тепер відкриває твою нову шторку
+        const filterActionBtn = document.createElement('button');
+        filterActionBtn.className = "flex items-center justify-center gap-2 w-full py-2 text-[10px] font-bold text-slate-400 hover:text-orange-500 hover:bg-slate-50 border-b border-slate-50 transition-all uppercase tracking-widest";
+        filterActionBtn.innerHTML = `<i class="fa-solid fa-sliders text-[12px]"></i> Фільтри`;
+
+        filterActionBtn.onclick = () => {
+            // Перемикаємо стан шторки фільтрів
+            filterDrawer.classList.toggle('open');
+        };
+        filterContainer.appendChild(filterActionBtn);
+
+        const chipsWrapper = document.createElement('div');
+        chipsWrapper.className = "flex flex-wrap gap-2 p-3";
+
         const allChip = document.createElement('button');
-        allChip.className = `brand-chip active`;
+        allChip.className = `brand-chip active whitespace-nowrap`;
         allChip.textContent = 'ВСІ';
         allChip.onclick = () => {
-            document.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
+            chipsWrapper.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
             allChip.classList.add('active');
             renderDrawerContent(categoryDevices);
         };
-        filterContainer.appendChild(allChip);
+        chipsWrapper.appendChild(allChip);
 
-        // Створюємо чіпси підкатегорій, які МИ ЗАДАЛИ (навіть якщо пристроїв ще немає)
         config.subtypes.forEach(type => {
             const chip = document.createElement('button');
-            chip.className = `brand-chip`;
+            chip.className = `brand-chip whitespace-nowrap`;
             chip.textContent = (subCategoryLabels[type] || type).toUpperCase();
 
             chip.onclick = () => {
-                document.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
+                chipsWrapper.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
-                // Показуємо пристрої тільки цього конкретного типу
                 const filtered = categoryDevices.filter(d => d.type === type);
                 renderDrawerContent(filtered);
             };
-            filterContainer.appendChild(chip);
+            chipsWrapper.appendChild(chip);
         });
 
+        filterContainer.appendChild(chipsWrapper);
         renderDrawerContent(categoryDevices);
         drawer.classList.add('open');
     }
@@ -187,9 +184,9 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         });
     }
 
-    // 3. Права панель
     const typeLabels = {
         'temp': { label: 'Температура', color: 'text-rose-500', border: 'border-rose-200' },
+        'sensor': { label: 'Датчики', color: 'text-blue-500', border: 'border-blue-200' },
         'hum': { label: 'Вологість', color: 'text-sky-500', border: 'border-sky-200' },
         'motion': { label: 'Рух', color: 'text-emerald-500', border: 'border-emerald-200' },
         'power': { label: 'Живлення', color: 'text-amber-500', border: 'border-amber-200' },
@@ -251,6 +248,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
         selectToolBtn.classList.add('active');
         drawer.classList.remove('open');
+        filterDrawer.classList.remove('open'); // Закриваємо фільтри при виборі інструменту
         if (window.setPlacementMode) window.setPlacementMode(false);
     });
 

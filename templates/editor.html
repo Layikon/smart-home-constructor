@@ -65,9 +65,6 @@
             <div class="drawer-header p-4 border-b border-slate-100" id="drawer-title">Оберіть пристрій</div>
 
             <div class="flex items-center px-2 py-2 bg-slate-50/50 border-b border-slate-100 gap-2">
-                <button id="open-filter-btn" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-orange-500 hover:border-orange-300 transition shadow-sm flex-shrink-0" title="Розширені фільтри">
-                    <i class="fa-solid fa-sliders"></i>
-                </button>
                 <div id="brand-filter-container" class="flex gap-1 overflow-x-auto no-scrollbar flex-1"></div>
             </div>
 
@@ -135,12 +132,11 @@
 
         window.onWindowResizeGlobal = onWindowResize;
 
-        // --- ЛОГІКА ПЕРЕМИКАННЯ РЕЖИМІВ (ОНОВЛЕНА) ---
+        // --- ЛОГІКА ПЕРЕМИКАННЯ РЕЖИМІВ ---
         const btnEdit = document.getElementById('mode-edit');
         const btnSimulate = document.getElementById('mode-simulate');
         const mainSidebar = document.getElementById('main-sidebar');
 
-        // Елементи плаваючого індикатора (замість футера)
         const statusText = document.getElementById('status-text');
         const statusDot = document.getElementById('status-dot');
 
@@ -148,7 +144,6 @@
             simulator.toggle(isSimulate);
             room.setEditorMode(!isSimulate);
 
-            // Оновлення кнопок зверху
             btnSimulate.classList.toggle('bg-white', isSimulate);
             btnSimulate.classList.toggle('shadow-sm', isSimulate);
             btnSimulate.classList.toggle('text-blue-600', isSimulate);
@@ -159,11 +154,9 @@
             btnEdit.classList.toggle('text-blue-600', !isSimulate);
             btnEdit.classList.toggle('text-slate-400', isSimulate);
 
-            // Блокування сайдбару
             mainSidebar.style.opacity = isSimulate ? '0.5' : '1';
             mainSidebar.style.pointerEvents = isSimulate ? 'none' : 'all';
 
-            // Оновлення плаваючого індикатора
             if (isSimulate) {
                 statusText.textContent = "Simulation Active";
                 statusText.classList.replace('text-slate-500', 'text-green-600');
@@ -194,33 +187,10 @@
             labelRenderer?.setSize(container.clientWidth, container.clientHeight);
         });
 
-        // --- ЛОГІКА ДЛЯ ШТОРОК ---
-        const filterDrawer = document.getElementById('filter-drawer');
-        const openFilterBtn = document.getElementById('open-filter-btn');
-        const closeFilterBtn = document.getElementById('close-filter-btn');
-
-        if (openFilterBtn && filterDrawer) {
-            openFilterBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                filterDrawer.classList.toggle('open');
-                openFilterBtn.classList.toggle('text-orange-500');
-                openFilterBtn.classList.toggle('border-orange-300');
-            });
-        }
-
-        if (closeFilterBtn && filterDrawer) {
-            closeFilterBtn.addEventListener('click', () => {
-                filterDrawer.classList.remove('open');
-                openFilterBtn.classList.remove('text-orange-500', 'border-orange-300');
-            });
-        }
-
         document.getElementById('close-drawer-btn').addEventListener('click', () => {
             document.getElementById('device-drawer').classList.remove('open');
-            if (filterDrawer) {
-                filterDrawer.classList.remove('open');
-                if(openFilterBtn) openFilterBtn.classList.remove('text-orange-500', 'border-orange-300');
-            }
+            const filterDrawer = document.getElementById('filter-drawer');
+            if (filterDrawer) filterDrawer.classList.remove('open');
             document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500', 'text-blue-500'));
             if (window.setPlacementMode) window.setPlacementMode(false);
             document.getElementById('tool-select').classList.add('active');
