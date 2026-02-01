@@ -1,5 +1,4 @@
 // static/js/simulator.js
-import { PROTOCOLS, COLORS } from './config.js';
 
 const THREE = window.THREE;
 
@@ -7,103 +6,94 @@ export class Simulator {
     constructor(scene) {
         this.scene = scene;
         this.isActive = false;
-        this.connectionLines = []; // Лінії логічних зв'язків (датчик -> хаб або роутер)
+        this.coverageHelpers = []; // Зони покриття
+        this.connectionLines = []; // Лінії логічних зв'язків
         this.raycaster = new THREE.Raycaster();
     }
 
-    // Оновлений метод toggle
     toggle(state) {
         this.isActive = state;
         if (this.isActive) {
             this.runSimulation();
         } else {
             this.clearSimulation();
-            // Скидаємо статус підключення у userData всіх сенсорів при вимкненні
-            this.scene.traverse((obj) => {
-                if (obj.userData && obj.userData.isSensor) {
-                    obj.userData.isConnected = false;
-                }
-            });
         }
     }
 
-    // Основний цикл симуляції зв'язків
+    // Основний цикл запуску симуляції
     runSimulation() {
-        this.clearSimulation();
-
         const sensors = [];
-        const hubs = [];
-
-        // 1. Сортуємо пристрої на хаби/роутери та інші датчики
         this.scene.traverse((obj) => {
-            if (obj.userData && obj.userData.isSensor) {
-                if (obj.userData.type === 'hub') hubs.push(obj);
-                else sensors.push(obj);
-            }
+            if (obj.userData && obj.userData.isSensor) sensors.push(obj);
         });
 
-        // 2. Розраховуємо підключення для кожного датчика
         sensors.forEach(sensor => {
-            const caps = sensor.userData.capabilities || [];
+            this.createCoverageZone(sensor);
+            this.calculateLogicConnections(sensor, sensors);
+        });
+    }
 
-            // Визначаємо можливості на основі конфігу
-            const supportsDirect = caps.some(c => PROTOCOLS.DIRECT.includes(c));
-            const needsHub = caps.some(c => PROTOCOLS.BRIDGE.includes(c));
+    // 1. Створення зони покриття на основі ТТХ
+    createCoverageZone(sensor) {
+        const type = sensor.userData.type;
+        const features = sensor.userData.features || {};
+        const range = features.range_m || 5;
 
-            let bestTarget = null;
-            let status = 'offline';
+        let geometry;
+        if (type === 'motion') {
+            // Сектор огляду для датчиків руху (110 градусів)
+            geometry = new THREE.ConeGeometry(range, range * 1.5, 32, 1, false, 0, Math.PI * 0.6);
+        } else {
+            // Сфера для датчиків температури/диму
+            geometry = new THREE.SphereGeometry(range / 2, 16, 16);
+        }
 
-            // ЛОГІКА ДЛЯ Zigbee / Sub1G / Matter (через Хаб)
-            if (needsHub || caps.includes('matter')) {
-                let minDistance = PROTOCOLS.RANGE_MAX;
+        const material = new THREE.MeshPhongMaterial({
+            color: new THREE.Color(sensor.userData.color || 0x3b82f6),
+            transparent: true,
+            opacity: 0.05, // Дуже прозоро, як у Zircon3D
+            wireframe: true,
+            side: THREE.DoubleSide
+        });
 
-                hubs.forEach(hub => {
-                    // Ігноруємо роутери для протоколів, що потребують саме Хаб
-                    if (hub.userData.subtype !== 'router') {
-                        const dist = sensor.position.distanceTo(hub.position);
-                        if (dist < minDistance) {
-                            const signal = this.getSignalStrength(sensor.position, hub.position);
-                            if (signal > 0.2) {
-                                minDistance = dist;
-                                bestTarget = hub;
-                                status = 'hub';
-                            }
-                        }
+        const coverage = new THREE.Mesh(geometry, material);
+        coverage.position.copy(sensor.position);
+
+        // Орієнтація конуса від стіни
+        coverage.rotation.copy(sensor.rotation);
+        if (type === 'motion') coverage.rotateX(Math.PI / 2);
+
+        this.scene.add(coverage);
+        this.coverageHelpers.push(coverage);
+    }
+
+    // 2. Логіка взаємодії та перевірка сигналу крізь стіни
+    calculateLogicConnections(source, allSensors) {
+        const sourceData = source.userData;
+        if (!sourceData.features || !sourceData.features.interacts_with) return;
+
+        allSensors.forEach(target => {
+            if (source === target) return;
+
+            // Перевірка сумісності типів
+            const canInteract = sourceData.features.interacts_with.includes(target.userData.type) ||
+                               sourceData.features.interacts_with.includes(target.userData.protocol);
+
+            if (canInteract) {
+                const distance = source.position.distanceTo(target.position);
+                const maxRange = sourceData.features.range_m || 20;
+
+                if (distance <= maxRange) {
+                    const signalStrength = this.getSignalStrength(source.position, target.position);
+                    if (signalStrength > 0) {
+                        this.drawLink(source.position, target.position, signalStrength);
                     }
-                });
-            }
-
-            // ЛОГІКА ДЛЯ Wi-Fi (через Роутер)
-            if (status === 'offline' && supportsDirect) {
-                let minDistance = 30; // Wi-Fi має більший радіус
-
-                hubs.forEach(hub => {
-                    if (hub.userData.subtype === 'router') {
-                        const dist = sensor.position.distanceTo(hub.position);
-                        if (dist < minDistance) {
-                            const signal = this.getSignalStrength(sensor.position, hub.position);
-                            if (signal > 0.1) {
-                                minDistance = dist;
-                                bestTarget = hub;
-                                status = 'cloud';
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Візуалізуємо результат
-            if (status !== 'offline') {
-                this.drawLink(sensor, bestTarget, status);
-                sensor.userData.isConnected = true;
-            } else {
-                sensor.userData.isConnected = false;
-                this.drawWarning(sensor);
+                }
             }
         });
     }
 
-    // Перевірка сигналу крізь стіни за допомогою Raycaster
+    // 3. Перевірка перешкод за допомогою Raycaster
     getSignalStrength(start, end) {
         const direction = new THREE.Vector3().subVectors(end, start).normalize();
         const distance = start.distanceTo(end);
@@ -111,40 +101,29 @@ export class Simulator {
         this.raycaster.set(start, direction);
         this.raycaster.far = distance;
 
-        // Перевіряємо тільки об'єкти, що мають властивість isWall або ім'я wall
+        // Шукаємо перетини зі стінами (RoomManager.wallMesh)
         const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-        const wallsHit = intersects.filter(i =>
-            i.object.userData.isWall ||
-            (i.object.name && i.object.name.toLowerCase().includes('wall'))
-        );
+        const wallsHit = intersects.filter(i => i.object.name === 'wall' || i.object.userData.isWall);
 
         let strength = 1.0;
-        strength -= (wallsHit.length * PROTOCOLS.WALL_ATTENUATION);
+        strength -= (wallsHit.length * 0.3); // -30% потужності за кожну стіну
 
         return Math.max(0, strength);
     }
 
-    // Візуалізація зв'язку (пунктирні лінії)
-    drawLink(sensor, target, status) {
-        const color = status === 'cloud' ? COLORS.WIFI_LINE : COLORS.HUB_LINE;
+    // 4. Візуалізація зв'язків (пунктирні лінії)
+    drawLink(start, end, strength) {
+        const color = strength > 0.6 ? 0x10b981 : (strength > 0.3 ? 0xf59e0b : 0xef4444);
 
         const material = new THREE.LineDashedMaterial({
             color: color,
             dashSize: 0.2,
             gapSize: 0.1,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.5
         });
 
-        const points = [];
-        points.push(sensor.position.clone());
-
-        if (target) {
-            points.push(target.position.clone());
-        } else {
-            points.push(sensor.position.clone().add(new THREE.Vector3(0, 2, 0)));
-        }
-
+        const points = [start, end];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         const line = new THREE.Line(geometry, material);
         line.computeLineDistances();
@@ -153,32 +132,18 @@ export class Simulator {
         this.connectionLines.push(line);
     }
 
-    // Червоне кільце
-    drawWarning(sensor) {
-        const ringGeo = new THREE.RingGeometry(0.15, 0.2, 32);
-        const ringMat = new THREE.MeshBasicMaterial({
-            color: COLORS.OFFLINE_RING,
-            side: THREE.DoubleSide
-        });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.copy(sensor.position);
-        ring.position.y += 0.02;
-        ring.rotation.x = -Math.PI / 2;
-        this.scene.add(ring);
-        this.connectionLines.push(ring);
-    }
-
     clearSimulation() {
+        this.coverageHelpers.forEach(h => this.scene.remove(h));
         this.connectionLines.forEach(l => this.scene.remove(l));
+        this.coverageHelpers = [];
         this.connectionLines = [];
     }
 
     update() {
         if (!this.isActive) return;
+        // Анімація ліній зв'язку (бігучі тире)
         this.connectionLines.forEach(line => {
-            if (line.material && line.material.type === 'LineDashedMaterial') {
-                line.material.dashOffset -= 0.01;
-            }
+            line.material.dashOffset -= 0.01;
         });
     }
 }

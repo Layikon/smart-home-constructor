@@ -153,29 +153,18 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
         devices.forEach((device) => {
             const item = document.createElement('div');
-            item.className = 'drawer-item hover:bg-slate-50 transition-colors cursor-pointer p-3 flex gap-3 border-b border-slate-50';
+            item.className = 'drawer-item hover:bg-slate-50 transition-colors';
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
-
-            // Генерація бейджів для всіх протоколів (capabilities)
-            const caps = device.capabilities || [];
-            const protocolHtml = caps.map(cap => {
-                let colorClass = 'bg-slate-100 text-slate-500';
-                if (cap === 'wifi') colorClass = 'bg-green-100 text-green-600';
-                else if (cap === 'zigbee') colorClass = 'bg-blue-100 text-blue-600';
-                else if (cap === 'matter') colorClass = 'bg-orange-100 text-orange-600';
-                else if (cap === 'sub1g') colorClass = 'bg-purple-100 text-purple-600';
-
-                return `<span class="text-[7px] ${colorClass} px-1 rounded font-black uppercase tracking-tighter">${cap}</span>`;
-            }).join('');
+            const mainProtocol = device.capabilities?.[0] || device.protocol || 'N/A';
 
             item.innerHTML = `
-                <div class="icon-wrapper border-slate-100 bg-white shadow-sm flex-shrink-0 w-10 h-10 rounded-md overflow-hidden">
-                    <img src="${iconPath}" class="w-full h-full object-contain p-1">
+                <div class="icon-wrapper border-slate-100 bg-white shadow-sm">
+                    <img src="${iconPath}" class="w-full h-full object-contain">
                 </div>
-                <div class="flex flex-col overflow-hidden justify-center">
-                    <div class="flex items-center gap-1.5 mb-0.5">
-                        <span class="text-[9px] text-blue-500 font-bold uppercase tracking-tighter opacity-80">${device.brand}</span>
-                        <div class="flex gap-0.5">${protocolHtml}</div>
+                <div class="flex flex-col overflow-hidden">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter opacity-80">${device.brand}</span>
+                        <span class="text-[8px] bg-slate-100 px-1 rounded text-slate-500 font-mono uppercase">${mainProtocol}</span>
                     </div>
                     <span class="text-[11px] text-slate-700 font-bold leading-tight truncate">${device.name}</span>
                 </div>
@@ -192,6 +181,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                     capabilities: device.capabilities || [],
                     features: device.features || {}
                 };
+                // ВАЖЛИВО: Спочатку оновлюємо дані, потім вмикаємо фантом
                 onSensorSelectCallback(sensorConfig);
                 if (window.setPlacementMode) window.setPlacementMode(true);
             };
