@@ -23,20 +23,22 @@
             <div class="h-4 w-px bg-slate-200"></div>
             <span class="text-sm font-bold tracking-widest text-slate-400 uppercase">Editor <span class="text-blue-600 font-black">v1.2</span></span>
         </div>
+
         <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4">
-            <button id="mode-edit" class="px-4 py-1 text-[10px] font-bold uppercase rounded bg-white shadow-sm text-blue-600">
+            <button id="mode-edit" onclick="window.setMode('room')" class="px-4 py-1 text-[10px] font-bold uppercase rounded bg-white shadow-sm text-blue-600 transition-all">
                 Конструктор
             </button>
-            <button id="mode-simulate" class="px-4 py-1 text-[10px] font-bold uppercase rounded text-slate-400 hover:text-slate-600">
+            <button id="mode-simulate" onclick="window.toggleSimulation(this)" class="px-4 py-1 text-[10px] font-bold uppercase rounded text-slate-400 hover:text-slate-600 transition-all">
                 Симуляція
             </button>
         </div>
+
         <div class="flex space-x-2">
             <button id="admin-add-device" class="bg-slate-100 text-slate-700 px-4 py-1.5 rounded text-xs font-bold hover:bg-slate-200 transition">
                 <i class="fa-solid fa-plus mr-1"></i> База пристроїв
             </button>
 
-            <button id="save-project-btn" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200 flex items-center gap-2">
+            <button id="save-project-btn" onclick="window.saveProject()" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200 flex items-center gap-2">
                 <i class="fa-solid fa-save"></i>
                 <span>Зберегти проєкт</span>
             </button>
@@ -50,7 +52,7 @@
     <div class="flex-1 flex overflow-hidden relative w-full h-full">
 
         <aside id="main-sidebar" class="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-4 space-y-1 z-30 shadow-sm relative">
-            <button id="tool-select" class="tool-btn active text-slate-400 hover:text-blue-600 text-xl p-2 w-full transition-all" title="Вибрати">
+            <button id="tool-select" onclick="window.setMode('select')" class="tool-btn active text-slate-400 hover:text-blue-600 text-xl p-2 w-full transition-all" title="Вибрати">
                 <i class="fa-solid fa-arrow-pointer"></i>
             </button>
             <div class="border-t border-slate-100 w-8 my-2"></div>
@@ -108,128 +110,30 @@
 
     {% include 'device_modal.html' %}
 
-    <script type="module">
-        import { initScene } from '/static/js/scene_setup.js';
-        import { initSensorPlacement } from '/static/js/sensors.js';
-        import { initLabelRenderer } from '/static/js/labels.js';
-        import { initUI } from '/static/js/ui_manager.js';
-        import { initAdminTool } from '/static/js/admin_tool.js';
-        import { RoomManager } from '/static/js/room_manager.js';
-        import { Simulator } from '/static/js/simulator.js';
-        // НОВИЙ ІМПОРТ
-        import { ProjectManager } from '/static/js/project_manager.js';
+    <script type="module" src="/static/js/main.js"></script>
 
-        // Ініціалізація сцени
-        const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
-        const container = document.getElementById('viewport');
-        const labelRenderer = initLabelRenderer(container);
-        window.controls = controls;
-
-        const room = new RoomManager(scene, camera, renderer);
-        const simulator = new Simulator(scene);
-        draggableObjects.push(room.floor, room.wallMesh);
-
-        // Ініціалізація UI
-        let selectedSensor = { type: 'temp', color: 0x3b82f6 };
-        const uiManager = initUI(scene, camera, controls, (newConfig) => {
-            selectedSensor = newConfig;
-        });
-
-        // Ініціалізація логіки розміщення
-        initSensorPlacement(container, scene, camera, draggableObjects, () => selectedSensor);
-        initAdminTool();
-
-        // --- ПІДКЛЮЧЕННЯ PROJECT MANAGER (НОВЕ) ---
-        const projectManager = new ProjectManager(scene, room, uiManager, draggableObjects);
-
-        // 1. Прив'язуємо кнопку збереження
-        const saveBtn = document.getElementById('save-project-btn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                projectManager.saveProject('save-project-btn');
-            });
-        }
-
-        // 2. Запускаємо автозавантаження
-        projectManager.loadLastProject();
-
-
-        // --- ЗАГАЛЬНІ ПОДІЇ ТА АНІМАЦІЯ ---
-        window.onWindowResizeGlobal = onWindowResize;
-
-        // UI Керування режимами
-        const btnEdit = document.getElementById('mode-edit');
-        const btnSimulate = document.getElementById('mode-simulate');
-        const mainSidebar = document.getElementById('main-sidebar');
-        const statusText = document.getElementById('status-text');
-        const statusDot = document.getElementById('status-dot');
-
-        function setMode(isSimulate) {
-            simulator.toggle(isSimulate);
-            room.setEditorMode(!isSimulate);
-
-            btnSimulate.classList.toggle('bg-white', isSimulate);
-            btnSimulate.classList.toggle('shadow-sm', isSimulate);
-            btnSimulate.classList.toggle('text-blue-600', isSimulate);
-            btnSimulate.classList.toggle('text-slate-400', !isSimulate);
-
-            btnEdit.classList.toggle('bg-white', !isSimulate);
-            btnEdit.classList.toggle('shadow-sm', !isSimulate);
-            btnEdit.classList.toggle('text-blue-600', !isSimulate);
-            btnEdit.classList.toggle('text-slate-400', isSimulate);
-
-            mainSidebar.style.opacity = isSimulate ? '0.5' : '1';
-            mainSidebar.style.pointerEvents = isSimulate ? 'none' : 'all';
-
-            if (isSimulate) {
-                statusText.textContent = "Simulation Active";
-                statusText.classList.replace('text-slate-500', 'text-green-600');
-                statusDot.classList.replace('bg-blue-500', 'bg-green-500');
-            } else {
-                statusText.textContent = "Editor Mode";
-                statusText.classList.replace('text-green-600', 'text-slate-500');
-                statusDot.classList.replace('bg-green-500', 'bg-blue-500');
-            }
-            if (isSimulate && window.setPlacementMode) window.setPlacementMode(false);
-        }
-
-        btnEdit.addEventListener('click', () => setMode(false));
-        btnSimulate.addEventListener('click', () => setMode(true));
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if (uiManager?.updateCamera) uiManager.updateCamera(0.1);
-            if (simulator.isActive) simulator.update();
-            controls.update();
-            renderer.render(scene, camera);
-            labelRenderer?.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            onWindowResize();
-            labelRenderer?.setSize(container.clientWidth, container.clientHeight);
-        });
-
-        document.getElementById('close-drawer-btn').addEventListener('click', () => {
-            document.getElementById('device-drawer').classList.remove('open');
-            document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500', 'text-blue-500'));
-            if (window.setPlacementMode) window.setPlacementMode(false);
-            document.getElementById('tool-select').classList.add('active');
-        });
-
+    <script>
+        // Додаткові дрібні UI скрипти, які не потребують модульності
         document.addEventListener('DOMContentLoaded', () => {
             const rightPanel = document.getElementById('right-panel');
             const toggleRightBtn = document.getElementById('toggle-right-panel');
+            const toggleIcon = document.getElementById('toggle-icon');
+
             if (toggleRightBtn && rightPanel) {
                 toggleRightBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     rightPanel.classList.toggle('closed');
-                    document.getElementById('toggle-icon').classList.toggle('rotate-180');
+                    toggleIcon.classList.toggle('rotate-180');
                 });
             }
-        });
 
-        animate();
+            // Закриття Drawer при натисканні на кнопку закриття
+            document.getElementById('close-drawer-btn').addEventListener('click', () => {
+                document.getElementById('device-drawer').classList.remove('open');
+                document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active'));
+                if (window.setMode) window.setMode('select');
+            });
+        });
     </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 // static/js/simulator.js
+import { PROTOCOLS, COLORS } from './config.js';
 
 const THREE = window.THREE;
 
@@ -26,7 +27,7 @@ export class Simulator {
         const sensors = [];
         const hubs = [];
 
-        // 1. Сортуємо пристрої
+        // 1. Сортуємо пристрої на хаби та інші датчики
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
                 if (obj.userData.type === 'hub') hubs.push(obj);
@@ -38,23 +39,23 @@ export class Simulator {
         sensors.forEach(sensor => {
             const caps = sensor.userData.capabilities || [];
 
-            // Визначаємо можливості
-            const supportsDirect = caps.includes('wifi') || caps.includes('matter');
-            const needsHub = caps.includes('zigbee') || caps.includes('sub1g') || caps.includes('bluetooth');
+            // Визначаємо можливості на основі конфігу
+            const supportsDirect = caps.some(c => PROTOCOLS.DIRECT.includes(c));
+            const needsHub = caps.some(c => PROTOCOLS.BRIDGE.includes(c));
 
             let bestHub = null;
             let status = 'offline';
 
-            // Якщо пристрій потребує хаб або підтримує його (Zigbee/Matter/Sub1G)
+            // Якщо пристрій підтримує роботу через міст (Zigbee/Matter/Sub1G)
             if (needsHub || caps.includes('matter')) {
-                let minDistance = 15; // Максимальний радіус хаба (метрів)
+                let minDistance = PROTOCOLS.RANGE_MAX; // Беремо радіус із конфігу
 
                 hubs.forEach(hub => {
                     const dist = sensor.position.distanceTo(hub.position);
                     if (dist < minDistance) {
                         // Перевірка перешкод (стін)
                         const signal = this.getSignalStrength(sensor.position, hub.position);
-                        if (signal > 0.2) { // Мінімальний поріг сигналу
+                        if (signal > 0.2) { // Мінімальний поріг сигналу для встановлення зв'язку
                             minDistance = dist;
                             bestHub = hub;
                             status = 'hub';
@@ -63,23 +64,23 @@ export class Simulator {
                 });
             }
 
-            // Якщо хаб не знайдено, але є Wi-Fi (як у Tapo P110M)
+            // Якщо хаб не знайдено (або не підтримується), але є Wi-Fi/Direct
             if (status === 'offline' && supportsDirect) {
                 status = 'cloud';
             }
 
-            // Візуалізуємо зв'язок
+            // Візуалізуємо результат
             if (status !== 'offline') {
                 this.drawLink(sensor, bestHub, status);
                 sensor.userData.isConnected = true;
             } else {
                 sensor.userData.isConnected = false;
-                this.drawWarning(sensor); // Значок помилки (опціонально)
+                this.drawWarning(sensor);
             }
         });
     }
 
-    // Перевірка сигналу крізь стіни
+    // Перевірка сигналу крізь стіни за допомогою Raycaster
     getSignalStrength(start, end) {
         const direction = new THREE.Vector3().subVectors(end, start).normalize();
         const distance = start.distanceTo(end);
@@ -91,14 +92,16 @@ export class Simulator {
         const wallsHit = intersects.filter(i => i.object.userData.isWall || i.object.name?.includes('wall'));
 
         let strength = 1.0;
-        strength -= (wallsHit.length * 0.25); // -25% за кожну стіну
+        // Використовуємо коефіцієнт затухання з конфігу
+        strength -= (wallsHit.length * PROTOCOLS.WALL_ATTENUATION);
 
         return Math.max(0, strength);
     }
 
-    // Візуалізація зв'язку (лінії)
+    // Візуалізація зв'язку (пунктирні лінії)
     drawLink(sensor, hub, status) {
-        const color = status === 'cloud' ? 0x22c55e : 0x3b82f6; // Зелений - WiFi, Синій - Хаб
+        // Кольори беремо з COLORS у config.js
+        const color = status === 'cloud' ? COLORS.WIFI_LINE : COLORS.HUB_LINE;
 
         const material = new THREE.LineDashedMaterial({
             color: color,
@@ -114,7 +117,7 @@ export class Simulator {
         if (status === 'hub' && hub) {
             points.push(hub.position.clone());
         } else {
-            // Для Wi-Fi малюємо вертикальну лінію "в хмару"
+            // Для Wi-Fi малюємо вертикальну лінію "вгору"
             points.push(sensor.position.clone().add(new THREE.Vector3(0, 2, 0)));
         }
 
@@ -126,16 +129,19 @@ export class Simulator {
         this.connectionLines.push(line);
     }
 
+    // Малюємо червоне кільце під датчиком, якщо він без зв'язку
     drawWarning(sensor) {
-        // Можна додати червону підсвітку під датчиком, якщо він офлайн
         const ringGeo = new THREE.RingGeometry(0.15, 0.2, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide });
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: COLORS.OFFLINE_RING,
+            side: THREE.DoubleSide
+        });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.position.copy(sensor.position);
         ring.position.y += 0.02;
         ring.rotation.x = -Math.PI / 2;
         this.scene.add(ring);
-        this.connectionLines.push(ring); // Додаємо в загальний список для очищення
+        this.connectionLines.push(ring);
     }
 
     clearSimulation() {
@@ -145,9 +151,9 @@ export class Simulator {
 
     update() {
         if (!this.isActive) return;
-        // Анімація "бігучих ліній"
+        // Анімація руху тире на лініях
         this.connectionLines.forEach(line => {
-            if (line.material.type === 'LineDashedMaterial') {
+            if (line.material && line.material.type === 'LineDashedMaterial') {
                 line.material.dashOffset -= 0.01;
             }
         });

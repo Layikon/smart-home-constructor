@@ -1,4 +1,5 @@
 // static/js/project_manager.js
+import { DEFAULT_MODELS } from './config.js';
 
 export class ProjectManager {
     constructor(scene, roomManager, uiManager, draggableObjects) {
@@ -10,21 +11,6 @@ export class ProjectManager {
         this.currentProjectId = null;
         this.currentProjectName = null;
         this.THREE = window.THREE;
-
-        // Синхронізовані шляхи до моделей
-        this.modelPaths = {
-            'temp': '/static/models/temp_sensor.glb',
-            'hum': '/static/models/hum_sensor.glb',
-            'temp/hum': '/static/models/temp_sensor.glb',
-            'motion': '/static/models/motion_sensor.glb',
-            'smoke': '/static/models/motion_sensor.glb',
-            'socket': '/static/models/socket.glb',
-            'power': '/static/models/socket.glb',
-            'switch': '/static/models/socket.glb',
-            'camera': '/static/models/camera.glb',
-            'door': '/static/models/door_sensor.glb',
-            'hub': '/static/models/hub.glb'
-        };
     }
 
     // --- ЗБЕРЕЖЕННЯ ---
@@ -147,8 +133,9 @@ export class ProjectManager {
             const loader = new this.THREE.GLTFLoader();
 
             sceneData.sensors.forEach(sensor => {
-                // Пріоритет: шлях із бази -> шлях зі словника
-                const path = sensor.model_path || this.modelPaths[sensor.type];
+                // Використовуємо шлях з бази або беремо дефолтний з config.js
+                const modelFile = sensor.model_path || DEFAULT_MODELS[sensor.type];
+                const path = modelFile ? `/static/models/${modelFile}` : null;
 
                 const setupObj = (obj) => {
                     obj.position.set(sensor.position.x, sensor.position.y, sensor.position.z);
@@ -168,12 +155,10 @@ export class ProjectManager {
                     this.scene.add(obj);
                     this.draggableObjects.push(obj);
 
-                    // Додаємо 2D підпис назви
                     if (window.addSensorLabel) {
                         window.addSensorLabel(obj, sensor.name);
                     }
 
-                    // Сповіщаємо UI Manager для оновлення списку праворуч
                     window.dispatchEvent(new CustomEvent('sensor-added', { detail: obj }));
                     if (this.uiManager && this.uiManager.addItemToList) {
                         this.uiManager.addItemToList(obj);
@@ -186,7 +171,6 @@ export class ProjectManager {
                         model.scale.set(0.5, 0.5, 0.5);
                         setupObj(model);
                     }, undefined, () => {
-                        // Fallback на куб
                         const geo = new this.THREE.BoxGeometry(0.2, 0.2, 0.05);
                         const mat = new this.THREE.MeshStandardMaterial({ color: 0x3b82f6 });
                         setupObj(new this.THREE.Mesh(geo, mat));

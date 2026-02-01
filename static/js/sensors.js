@@ -1,5 +1,6 @@
 // static/js/sensors.js
 import { addSensorLabel } from './labels.js';
+import { DEFAULT_MODELS } from './config.js';
 
 export function initSensorPlacement(container, scene, camera, draggableObjects, getSelectedSensor) {
     const THREE = window.THREE;
@@ -15,22 +16,6 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
     const ghostModels = {};
     let currentGhost = null;
     let activeModelName = null;
-
-    // Словник відповідності типів до моделей (якщо model_path пустий у JSON)
-    const fallbackModels = {
-        'temp': 'temp_sensor.glb',
-        'hum': 'hum_sensor.glb',
-        'temp/hum': 'temp_sensor.glb',
-        'motion': 'motion_sensor.glb',
-        'smoke': 'motion_sensor.glb',
-        'door': 'door_sensor.glb',
-        'window': 'door_sensor.glb',
-        'socket': 'socket.glb',
-        'power': 'socket.glb',
-        'switch': 'socket.glb',
-        'camera': 'camera.glb',
-        'hub': 'hub.glb'
-    };
 
     function toggleLabel(sensorObj, show) {
         sensorObj.children.forEach(child => {
@@ -89,21 +74,21 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
     function updateGhostModel(sensorConfig) {
         if (!isPlacementMode) return;
 
-        // Пріоритет: шлях з JSON -> fallback по типу
-        let modelName = sensorConfig.model_path || fallbackModels[sensorConfig.type];
-        activeModelName = modelName;
+        // Пріоритет: шлях з JSON -> DEFAULT_MODELS з config.js
+        let modelFile = sensorConfig.model_path || DEFAULT_MODELS[sensorConfig.type];
+        activeModelName = modelFile;
 
-        if (!modelName) {
+        if (!modelFile) {
             showDefaultGhost(sensorConfig.color);
             return;
         }
 
         // Якщо модель вже в кеші
-        if (ghostModels[modelName]) {
+        if (ghostModels[modelFile]) {
             if (ghostModels['default']) ghostModels['default'].visible = false;
-            if (currentGhost && currentGhost !== ghostModels[modelName]) currentGhost.visible = false;
+            if (currentGhost && currentGhost !== ghostModels[modelFile]) currentGhost.visible = false;
 
-            currentGhost = ghostModels[modelName];
+            currentGhost = ghostModels[modelFile];
             currentGhost.visible = true;
             return;
         }
@@ -112,7 +97,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
         showDefaultGhost(sensorConfig.color);
 
         loader.load(
-            `/static/models/${modelName}`,
+            `/static/models/${modelFile}`,
             (gltf) => {
                 const model = gltf.scene;
                 model.traverse((node) => {
@@ -124,10 +109,10 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                 });
 
                 scene.add(model);
-                ghostModels[modelName] = model;
+                ghostModels[modelFile] = model;
 
                 // Перевіряємо, чи вибір користувача не змінився за час завантаження
-                if (isPlacementMode && activeModelName === modelName) {
+                if (isPlacementMode && activeModelName === modelFile) {
                     if (ghostModels['default']) ghostModels['default'].visible = false;
                     if (currentGhost) currentGhost.visible = false;
 
@@ -139,8 +124,8 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
             },
             undefined,
             (error) => {
-                console.warn(`Ghost model not found: ${modelName}`);
-                if (activeModelName === modelName) showDefaultGhost(sensorConfig.color);
+                console.warn(`Ghost model not found: ${modelFile}`);
+                if (activeModelName === modelFile) showDefaultGhost(sensorConfig.color);
             }
         );
     }
@@ -254,11 +239,11 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                 if (window.refreshUIList) window.refreshUIList();
             };
 
-            let modelToLoad = sensorConfig.model_path || fallbackModels[sensorConfig.type];
+            let modelFile = sensorConfig.model_path || DEFAULT_MODELS[sensorConfig.type];
 
-            if (modelToLoad) {
+            if (modelFile) {
                 loader.load(
-                    `/static/models/${modelToLoad}`,
+                    `/static/models/${modelFile}`,
                     (gltf) => finalizePlacement(gltf.scene),
                     undefined,
                     (err) => {
