@@ -11,19 +11,21 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
     let isPlacementMode = false;
     let hoveredSensor = null;
 
+    // Кеш для завантажених фантомів
     const ghostModels = {};
     let currentGhost = null;
+    let activeModelName = null; // Зберігаємо ім'я поточної необхідної моделі
 
-    // --- ФІКС 1: СПИСОК РЕЗЕРВНИХ МОДЕЛЕЙ ---
-    // Це вирішує проблему, коли фантом був квадратиком
+    // Розширений список дефолтних моделей (якщо в JSON пусто)
     const fallbackModels = {
         'temp': 'temp_sensor.glb',
         'hum': 'hum_sensor.glb',
         'temp/hum': 'temp_sensor.glb',
         'motion': 'motion_sensor.glb',
+        'smoke': 'motion_sensor.glb', // Використовуємо датчик руху як заглушку для диму, якщо нема своєї
         'socket': 'socket.glb',
         'power': 'socket.glb',
-        'switch': 'switch.glb',
+        'switch': 'socket.glb',       // Для вимикачів теж сокет, або switch.glb якщо є
         'camera': 'camera.glb',
         'door': 'door_sensor.glb',
         'hub': 'hub.glb'
@@ -41,19 +43,20 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
     window.setPlacementMode = (isActive) => {
         isPlacementMode = isActive;
 
-        // Ховаємо всі привиди при зміні режиму
+        // Ховаємо всі фантоми
         Object.values(ghostModels).forEach(m => m.visible = false);
 
         if (isActive) {
             container.style.cursor = 'crosshair';
-            // Одразу оновлюємо фантом
             const config = getSelectedSensor();
             if (config) updateGhostModel(config);
         } else {
             container.style.cursor = 'default';
+            activeModelName = null;
         }
     };
 
+    // Створення стандартного кубика (поки вантажиться модель)
     function createDefaultMesh(color, opacity = 1) {
         const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.05);
         const material = new THREE.MeshStandardMaterial({
@@ -66,12 +69,20 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
         return mesh;
     }
 
+    // Показати кубик
     function showDefaultGhost(color) {
         if (!ghostModels['default']) {
             ghostModels['default'] = createDefaultMesh(0xffffff, 0.5);
             scene.add(ghostModels['default']);
         }
+
+        // Якщо вже є активний фантом-модель, ховаємо його
+        if (currentGhost && currentGhost !== ghostModels['default']) {
+            currentGhost.visible = false;
+        }
+
         currentGhost = ghostModels['default'];
+
         const colorHex = typeof color === 'string' ? parseInt(color.replace('#', '0x')) : (color || 0x3b82f6);
         currentGhost.material.color.setHex(colorHex);
         currentGhost.visible = true;
@@ -79,47 +90,77 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
 
     function updateGhostModel(sensorConfig) {
         if (!isPlacementMode) return;
-        Object.values(ghostModels).forEach(m => m.visible = false);
 
-        // Визначаємо модель: з конфігу або з резервного списку
-        const modelName = sensorConfig.model_path || fallbackModels[sensorConfig.type];
+        // 1. Визначаємо, яка модель нам потрібна
+        let modelName = sensorConfig.model_path;
+        if (!modelName || modelName.trim() === "") {
+            modelName = fallbackModels[sensorConfig.type];
+        }
 
+        // Запам'ятовуємо, що ми зараз хочемо саме цю модель
+        activeModelName = modelName;
+
+        // Якщо моделі взагалі немає -> кубик
         if (!modelName) {
             showDefaultGhost(sensorConfig.color);
-        } else {
-            if (!ghostModels[modelName]) {
-                loader.load(`/static/models/${modelName}`, (gltf) => {
-                    const model = gltf.scene;
-                    model.traverse((node) => {
-                        if (node.isMesh) {
-                            node.material = node.material.clone();
-                            node.material.transparent = true;
-                            node.material.opacity = 0.5;
-                        }
-                    });
-                    scene.add(model);
-                    ghostModels[modelName] = model;
-
-                    // Перевіряємо, чи актуальна ця модель (поки вантажилась, користувач міг змінити вибір)
-                    if (isPlacementMode) {
-                        const currentCfg = getSelectedSensor();
-                        const currentName = currentCfg.model_path || fallbackModels[currentCfg.type];
-                        if (currentName === modelName) {
-                            currentGhost = model;
-                            currentGhost.visible = true;
-                        }
-                    }
-                }, undefined, (err) => {
-                    // Якщо модель не знайдена - показуємо кубик
-                    // Це виправить відображення для тих типів, у яких ще немає GLB файлів
-                    console.warn(`Ghost load failed for ${modelName}, using fallback.`);
-                    showDefaultGhost(sensorConfig.color);
-                });
-            } else {
-                currentGhost = ghostModels[modelName];
-                if (currentGhost) currentGhost.visible = true;
-            }
+            return;
         }
+
+        // 2. Якщо модель вже є в кеші -> показуємо її
+        if (ghostModels[modelName]) {
+            if (ghostModels['default']) ghostModels['default'].visible = false; // Ховаємо куб
+
+            // Ховаємо попередній фантом, якщо він був іншим
+            if (currentGhost && currentGhost !== ghostModels[modelName]) {
+                currentGhost.visible = false;
+            }
+
+            currentGhost = ghostModels[modelName];
+            currentGhost.visible = true;
+            return;
+        }
+
+        // 3. Якщо моделі немає -> показуємо кубик і починаємо завантаження
+        showDefaultGhost(sensorConfig.color);
+
+        loader.load(
+            `/static/models/${modelName}`,
+            (gltf) => {
+                const model = gltf.scene;
+
+                // Робимо модель напівпрозорою
+                model.traverse((node) => {
+                    if (node.isMesh) {
+                        node.material = node.material.clone();
+                        node.material.transparent = true;
+                        node.material.opacity = 0.5;
+                    }
+                });
+
+                scene.add(model);
+                ghostModels[modelName] = model;
+
+                // 4. ПЕРЕВІРКА: Чи ми все ще хочемо цю модель?
+                // (Користувач міг вже переключитись на інший пристрій, поки це вантажилось)
+                if (isPlacementMode && activeModelName === modelName) {
+                    if (ghostModels['default']) ghostModels['default'].visible = false; // Ховаємо куб
+                    if (currentGhost) currentGhost.visible = false; // Ховаємо старе
+
+                    currentGhost = model;
+                    currentGhost.visible = true;
+                } else {
+                    model.visible = false;
+                }
+            },
+            undefined,
+            (error) => {
+                console.warn(`Ghost model not found: ${modelName}. Using box.`);
+                // Якщо помилка - залишаємо кубик активним
+                if (activeModelName === modelName) {
+                    showDefaultGhost(sensorConfig.color);
+                }
+            }
+        );
     }
 
     // --- РУХ МИШІ ---
@@ -130,8 +171,8 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
 
         raycaster.setFromCamera(mouse, camera);
 
+        // Логіка підсвітки вже встановлених (коли не в режимі розміщення)
         if (!isPlacementMode) {
-            // Логіка підсвітки (коли не ставимо)
             const allIntersects = raycaster.intersectObjects(scene.children, true);
             const sensorHit = allIntersects.find(i => {
                 let p = i.object;
@@ -156,7 +197,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
             return;
         }
 
-        // Логіка Фантома (коли ставимо)
+        // Логіка руху Фантома
         if (!currentGhost) return;
 
         const intersects = raycaster.intersectObjects(draggableObjects, true)
@@ -172,7 +213,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                 const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
                 worldNormal.applyMatrix3(normalMatrix).normalize();
                 currentGhost.lookAt(hit.point.clone().add(worldNormal));
-                currentGhost.position.add(worldNormal.multiplyScalar(0.02));
+                currentGhost.position.add(worldNormal.multiplyScalar(0.02)); // Трохи над поверхнею
             }
         } else {
             currentGhost.visible = false;
@@ -184,7 +225,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
         startY = event.clientY;
     });
 
-    // --- ВСТАНОВЛЕННЯ (КЛІК) ---
+    // --- ВСТАНОВЛЕННЯ ПРИСТРОЮ ---
     container.addEventListener('pointerup', (event) => {
         if (!isPlacementMode || event.button !== 0) return;
         if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) return;
@@ -235,14 +276,13 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                 if (window.refreshUIList) window.refreshUIList();
 
                 console.log(`Встановлено: ${sensorConfig.name}`);
-
-                // --- ФІКС 3: ПРИБРАНО СКИНУТТЯ РЕЖИМУ ---
-                // Ми більше не викликаємо window.setPlacementMode(false)
-                // Тепер можна ставити багато датчиків поспіль
             };
 
-            // Визначаємо модель для завантаження
-            const modelToLoad = sensorConfig.model_path || fallbackModels[sensorConfig.type];
+            // Визначаємо, що вантажити
+            let modelToLoad = sensorConfig.model_path;
+            if (!modelToLoad || modelToLoad.trim() === "") {
+                modelToLoad = fallbackModels[sensorConfig.type];
+            }
 
             if (modelToLoad) {
                 loader.load(
@@ -250,9 +290,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                     (gltf) => finalizePlacement(gltf.scene),
                     undefined,
                     (err) => {
-                        // --- ФІКС 2: ОБРОБКА ПОМИЛКИ ХАБА ---
-                        // Якщо модель (hub.glb) не знайдена, ставимо кубик, а не ламаємося
-                        console.warn(`Failed to load ${modelToLoad}, fallback to box.`);
+                        console.warn(`Load failed for placement: ${modelToLoad}. Using box.`);
                         const colorHex = typeof sensorConfig.color === 'string' ? parseInt(sensorConfig.color.replace('#', '0x')) : (sensorConfig.color || 0x3b82f6);
                         finalizePlacement(createDefaultMesh(colorHex));
                     }
@@ -264,6 +302,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
         }
     });
 
+    // Видалення (ПКМ)
     container.addEventListener('contextmenu', (event) => {
         event.preventDefault();
         raycaster.setFromCamera(mouse, camera);
