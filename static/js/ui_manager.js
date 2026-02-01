@@ -15,14 +15,13 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
     let cameraTarget = null;
     let orbitTarget = null;
-    let deviceLibrary = []; // Тут будуть пристрої поточної категорії
+    let deviceLibrary = [];
 
-    // --- СТАТИЧНА СТРУКТУРА ІНТЕРФЕЙСУ ТА ВІДПОВІДНІ ФАЙЛИ ---
     const UI_STRUCTURE = {
         'Клімат': {
             icon: 'fa-thermometer-half',
             color: 'text-rose-400',
-            subtypes: ['temp/hum', 'air', 'press'], // ОНОВЛЕНО на об'єднаний тип
+            subtypes: ['temp/hum', 'air', 'press'],
             file: 'climate_devices.json'
         },
         'Безпека': {
@@ -52,7 +51,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     };
 
     const subCategoryLabels = {
-        'temp/hum': 'Термометри/Волога', // ОНОВЛЕНО
+        'temp/hum': 'Термометри/Волога',
         'air': 'Повітря',
         'press': 'Тиск',
         'motion': 'Рух',
@@ -69,16 +68,12 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     };
 
     if (closeFilterBtn) {
-        closeFilterBtn.onclick = () => {
-            filterDrawer.classList.remove('open');
-        };
+        closeFilterBtn.onclick = () => filterDrawer.classList.remove('open');
     }
 
-    // Динамічне завантаження пристроїв за категорією
     async function loadCategoryDevices(categoryName) {
         const config = UI_STRUCTURE[categoryName];
         if (!config) return;
-
         try {
             const response = await fetch(`/static/data/${config.file}?t=${Date.now()}`);
             if (!response.ok) throw new Error('Файл не знайдено');
@@ -103,8 +98,6 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                 document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
                 btn.classList.add('active', 'border-blue-500');
                 selectToolBtn.classList.remove('active');
-
-                // Завантажуємо дані саме для цієї категорії
                 await loadCategoryDevices(catName);
                 openDrawer(catName);
             };
@@ -115,56 +108,45 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     function openDrawer(categoryName) {
         drawerTitle.textContent = categoryName;
         const config = UI_STRUCTURE[categoryName];
-
-        const categoryDevices = deviceLibrary;
-
         filterContainer.innerHTML = '';
         filterContainer.className = "flex flex-col w-full border-b border-slate-100 bg-white sticky top-0 z-10";
 
         const filterActionBtn = document.createElement('button');
         filterActionBtn.className = "flex items-center justify-center gap-2 w-full py-2 text-[10px] font-bold text-slate-400 hover:text-orange-500 hover:bg-slate-50 border-b border-slate-50 transition-all uppercase tracking-widest";
         filterActionBtn.innerHTML = `<i class="fa-solid fa-sliders text-[12px]"></i> Фільтри`;
-
-        filterActionBtn.onclick = () => {
-            filterDrawer.classList.toggle('open');
-        };
+        filterActionBtn.onclick = () => filterDrawer.classList.toggle('open');
         filterContainer.appendChild(filterActionBtn);
 
         const chipsWrapper = document.createElement('div');
         chipsWrapper.className = "flex flex-wrap gap-2 p-3";
 
-        const allChip = document.createElement('button');
-        allChip.className = `brand-chip active whitespace-nowrap`;
-        allChip.textContent = 'ВСІ';
-        allChip.onclick = () => {
-            chipsWrapper.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
-            allChip.classList.add('active');
-            renderDrawerContent(categoryDevices);
-        };
-        chipsWrapper.appendChild(allChip);
-
-        config.subtypes.forEach(type => {
+        const createChip = (text, onClick, isActive = false) => {
             const chip = document.createElement('button');
-            chip.className = `brand-chip whitespace-nowrap`;
-            chip.textContent = (subCategoryLabels[type] || type).toUpperCase();
-
+            chip.className = `brand-chip ${isActive ? 'active' : ''} whitespace-nowrap`;
+            chip.textContent = text.toUpperCase();
             chip.onclick = () => {
                 chipsWrapper.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
-                const filtered = categoryDevices.filter(d => d.type === type);
-                renderDrawerContent(filtered);
+                onClick();
             };
-            chipsWrapper.appendChild(chip);
+            return chip;
+        };
+
+        chipsWrapper.appendChild(createChip('ВСІ', () => renderDrawerContent(deviceLibrary), true));
+        config.subtypes.forEach(type => {
+            chipsWrapper.appendChild(createChip(subCategoryLabels[type] || type, () => {
+                renderDrawerContent(deviceLibrary.filter(d => d.type === type));
+            }));
         });
 
         filterContainer.appendChild(chipsWrapper);
-        renderDrawerContent(categoryDevices);
+        renderDrawerContent(deviceLibrary);
         drawer.classList.add('open');
     }
 
     function renderDrawerContent(devices) {
         drawerContent.innerHTML = '';
-        if (!devices || devices.length === 0) {
+        if (!devices?.length) {
             drawerContent.innerHTML = '<div class="text-[10px] text-slate-400 p-4 italic text-center w-full">У цій категорії ще немає пристроїв</div>';
             return;
         }
@@ -173,7 +155,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             const item = document.createElement('div');
             item.className = 'drawer-item hover:bg-slate-50 transition-colors';
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
-            const mainProtocol = (device.capabilities && device.capabilities.length > 0) ? device.capabilities[0] : (device.protocol || 'N/A');
+            const mainProtocol = device.capabilities?.[0] || device.protocol || 'N/A';
 
             item.innerHTML = `
                 <div class="icon-wrapper border-slate-100 bg-white shadow-sm">
@@ -199,8 +181,9 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                     capabilities: device.capabilities || [],
                     features: device.features || {}
                 };
-                if (window.setPlacementMode) window.setPlacementMode(true);
+                // ВАЖЛИВО: Спочатку оновлюємо дані, потім вмикаємо фантом
                 onSensorSelectCallback(sensorConfig);
+                if (window.setPlacementMode) window.setPlacementMode(true);
             };
             drawerContent.appendChild(item);
         });
@@ -210,25 +193,28 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         'temp/hum': { label: 'Температура/Волога', color: 'text-rose-500', border: 'border-rose-200' },
         'sensor': { label: 'Датчики', color: 'text-blue-500', border: 'border-blue-200' },
         'motion': { label: 'Рух', color: 'text-emerald-500', border: 'border-emerald-200' },
+        'smoke': { label: 'Дим', color: 'text-gray-500', border: 'border-gray-200' },
         'power': { label: 'Живлення', color: 'text-amber-500', border: 'border-amber-200' },
+        'switch': { label: 'Вимикачі', color: 'text-green-500', border: 'border-green-200' },
         'camera': { label: 'Камери', color: 'text-slate-500', border: 'border-slate-200' },
         'hub': { label: 'Хаби', color: 'text-indigo-500', border: 'border-indigo-200' }
     };
 
     window.refreshUIList = function() {
         objectListContainer.innerHTML = '';
-        const sensors = scene.children.filter(obj => obj.userData && obj.userData.isSensor === true);
+        const sensors = scene.children.filter(obj => obj.userData?.isSensor === true);
         const counter = document.getElementById('sensor-count');
         if (counter) counter.textContent = sensors.length;
-        const groups = {};
-        sensors.forEach(s => {
+
+        const groups = sensors.reduce((acc, s) => {
             const type = s.userData.type;
-            if (!groups[type]) groups[type] = [];
-            groups[type].push(s);
-        });
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(s);
+            return acc;
+        }, {});
 
         Object.keys(typeLabels).forEach(type => {
-            if (groups[type] && groups[type].length > 0) {
+            if (groups[type]?.length) {
                 const header = document.createElement('div');
                 header.className = `flex items-center space-x-2 border-b-2 ${typeLabels[type].border} pb-1 mb-2 mt-4`;
                 header.innerHTML = `<span class="text-[10px] font-black uppercase ${typeLabels[type].color}">${typeLabels[type].label}</span>`;
@@ -276,13 +262,13 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     renderFixedSidebar();
 
     return {
+        addItemToList: () => window.refreshUIList(),
         updateCamera: (lerpFactor) => {
             if (cameraTarget && orbitTarget) {
                 camera.position.lerp(cameraTarget, lerpFactor);
                 controls.target.lerp(orbitTarget, lerpFactor);
                 if (camera.position.distanceTo(cameraTarget) < 0.05) {
-                    cameraTarget = null;
-                    orbitTarget = null;
+                    cameraTarget = orbitTarget = null;
                 }
             }
         }
