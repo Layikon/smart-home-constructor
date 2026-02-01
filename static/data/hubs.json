@@ -24,6 +24,28 @@
                 ],
                 "max_devices": 128
             }
+        },
+        {
+            "id": "dev_router_wifi6",
+            "brand": "Система",
+            "category": "Керування",
+            "name": "Wi-Fi 6 Роутер",
+            "type": "hub",
+            "subtype": "router",
+            "icon_file": "1.png",
+            "model_path": "hub.glb",
+            "capabilities": [
+                "wifi"
+            ],
+            "features": {
+                "power": "220v",
+                "requires_hub": false,
+                "is_master": true,
+                "serves_protocols": [
+                    "wifi"
+                ],
+                "max_devices": 254
+            }
         }
     ]
 }

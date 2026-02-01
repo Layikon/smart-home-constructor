@@ -33,13 +33,14 @@
                         <option value="Shelly">Shelly</option>
                         <option value="Ajax">Ajax Systems</option>
                         <option value="TP-Link">TP-Link Tapo</option>
+                        <option value="Система">Система (Generic)</option>
                     </select>
                 </div>
             </div>
 
             <div>
                 <label class="block text-[10px] text-slate-500 mb-1 ml-1 uppercase font-bold">Назва моделі</label>
-                <input type="text" id="dev-name" placeholder="напр. Hub M2 / Motion Sensor" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs text-white outline-none focus:border-orange-500 placeholder-slate-600" required>
+                <input type="text" id="dev-name" placeholder="напр. Hub M2 / Wi-Fi Router" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-xs text-white outline-none focus:border-orange-500 placeholder-slate-600" required>
             </div>
 
             <div id="dynamic-fields" class="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 min-h-[60px]">
@@ -84,7 +85,7 @@
                     </div>
                     <div>
                         <label class="text-[9px] text-slate-400 uppercase font-bold">Макс. навантаження</label>
-                        <input type="number" placeholder="3680 Вт" class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
+                        <input type="number" id="dev-load" placeholder="3680 Вт" class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
                     </div>
                 </div>
 
@@ -92,11 +93,11 @@
                     <div>
                         <label class="text-[9px] text-slate-400 uppercase font-bold">Тип датчика</label>
                         <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
-                            <option value="gas">Газ</option>
+                            <option value="motion">Рух</option>
+                            <option value="door">Відкриття / Закриття</option>
                             <option value="leak">Протікання (Волога)</option>
                             <option value="smoke">Дим</option>
-                            <option value="door">Відкриття / Закриття</option>
-                            <option value="motion">Рух</option>
+                            <option value="gas">Газ</option>
                         </select>
                     </div>
                     <div>
@@ -119,18 +120,16 @@
                 </div>
 
                 <div data-type="hub" class="field-group hidden grid grid-cols-2 gap-3">
-                    <div class="flex items-center">
-                        <p class="text-[10px] text-orange-400/90 italic border border-orange-500/30 bg-orange-500/10 p-2 rounded w-full">
-                            <i class="fa-solid fa-info-circle mr-1"></i> Головний шлюз керування (Master)
-                        </p>
+                    <div>
+                        <label class="text-[9px] text-slate-400 uppercase font-bold">Призначення</label>
+                        <select class="w-full bg-slate-800 border border-slate-600 p-1.5 rounded text-xs text-white mt-1 outline-none focus:border-orange-500">
+                            <option value="hub">Smart Hub (Gateway)</option>
+                            <option value="router">Wi-Fi Роутер</option>
+                        </select>
                     </div>
                     <div>
                         <label class="text-[9px] text-slate-400 uppercase font-bold">Тип живлення</label>
                         <div class="grid grid-cols-3 gap-1 mt-1">
-                            <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition opacity-50">
-                                <input type="radio" name="power" value="battery" class="hidden">
-                                <span class="text-[8px] text-slate-300 font-bold">BAT</span>
-                            </label>
                             <label class="flex flex-col items-center justify-center p-1 border border-slate-600 rounded cursor-pointer hover:bg-slate-700 transition">
                                 <input type="radio" name="power" value="usb" class="hidden" checked>
                                 <span class="text-[8px] text-slate-300 font-bold">USB</span>
@@ -214,9 +213,11 @@
 </style>
 
 <script>
+    // Цей скрипт керує ЛИШЕ інтерфейсом модалки. Логіка збереження — в admin_tool.js
     document.addEventListener('DOMContentLoaded', () => {
         const classSelector = document.getElementById('dev-type');
         const dynamicFields = document.querySelectorAll('.field-group');
+        const modal = document.getElementById('device-modal');
 
         function updateFields() {
             const selectedType = classSelector.value;
@@ -231,7 +232,7 @@
         classSelector.addEventListener('change', updateFields);
         updateFields();
 
-        const modal = document.getElementById('device-modal');
+        // Закриття модалки
         const closeBtns = [
             document.getElementById('close-modal'),
             document.getElementById('close-modal-x')
@@ -239,6 +240,11 @@
 
         closeBtns.forEach(btn => {
             if(btn) btn.addEventListener('click', () => modal.classList.add('hidden'));
+        });
+
+        // Закриття по кліку на фон
+        modal.addEventListener('click', (e) => {
+            if(e.target === modal) modal.classList.add('hidden');
         });
     });
 </script>

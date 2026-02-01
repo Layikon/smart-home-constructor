@@ -1,102 +1,114 @@
 // static/js/main.js
-
 import { initScene } from './scene_setup.js';
 import { RoomManager } from './room_manager.js';
 import { initUI } from './ui_manager.js';
 import { initSensorPlacement } from './sensors.js';
 import { ProjectManager } from './project_manager.js';
 import { Simulator } from './simulator.js';
+import { initLabelRenderer } from './labels.js';
 
-// 1. Ініціалізація базової сцени (в'юпорт, камера, рендерер)
+// 1. Ініціалізація базової сцени
 const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
+const container = document.getElementById('viewport');
 
-// 2. Ініціалізація менеджерів
+// 2. Рендерер для 2D написів (розміри стін, назви датчиків)
+const labelRenderer = initLabelRenderer(container);
+
+// 3. Ініціалізація менеджерів
 const roomManager = new RoomManager(scene, camera, renderer);
 const simulator = new Simulator(scene);
 
-// Перемінна для зберігання конфігурації обраного датчика
-let selectedSensorConfig = null;
+// ДОДАЄМО ОБ'ЄКТИ КІМНАТИ В МАСИВ ВЗАЄМОДІЇ
+// Це дозволяє ставити датчики на стіни/підлогу та бачити ручки розтягування
+draggableObjects.push(roomManager.floor, roomManager.wallMesh);
+if (roomManager.handles) {
+    Object.values(roomManager.handles).forEach(handle => draggableObjects.push(handle));
+}
 
-// Функція-колбек для UI: коли користувач обирає датчик у меню
+let selectedSensorConfig = null;
 const onSensorSelect = (config) => {
     selectedSensorConfig = config;
 };
 
-// 3. Ініціалізація інтерфейсу (Sidebar, список об'єктів, камери)
+// 4. Ініціалізація UI та системи розміщення
 const uiManager = initUI(scene, camera, controls, onSensorSelect);
 
-// 4. Ініціалізація системи розміщення датчиків
 initSensorPlacement(
-    renderer.domElement,
+    container,
     scene,
     camera,
     draggableObjects,
-    () => selectedSensorConfig // Передаємо функцію, яка повертає актуальний конфіг
+    () => selectedSensorConfig
 );
 
-// 5. Менеджер проєктів (Збереження/Завантаження)
+// 5. Менеджер проєктів
 const projectManager = new ProjectManager(scene, roomManager, uiManager, draggableObjects);
 
-// --- ГЛОБАЛЬНІ ФУНКЦІЇ ДЛЯ КНОПОК В HTML ---
+// --- ГЛОБАЛЬНІ ФУНКЦІЇ ДЛЯ INTERFACE ---
 
-// Збереження проєкту (викликається з editor.html)
 window.saveProject = () => projectManager.saveProject('save-project-btn');
 
-// Перемикання режиму симуляції
 window.toggleSimulation = (btn) => {
     const isActive = btn.classList.contains('active');
+
+    // Перемикаємо стан симулятора
+    simulator.toggle(!isActive);
+    // Вимикаємо редагування кімнати під час симуляції
+    roomManager.setEditorMode(isActive);
+
     if (!isActive) {
         btn.classList.add('active', 'bg-orange-500', 'text-white');
         btn.innerHTML = '<i class="fa-solid fa-stop"></i> Стоп';
-        simulator.toggle(true);
+        if (window.setPlacementMode) window.setPlacementMode(false);
     } else {
         btn.classList.remove('active', 'bg-orange-500', 'text-white');
         btn.innerHTML = '<i class="fa-solid fa-play"></i> Симуляція';
-        simulator.toggle(false);
     }
 };
 
-// Зміна режиму редактора (стіни/датчики)
 window.setMode = (mode) => {
     const isEditRoom = (mode === 'room');
     roomManager.setEditorMode(isEditRoom);
 
-    // Якщо перейшли в режим кімнати - вимикаємо розміщення датчиків
+    // Якщо вибрано режим кімнати - вимикаємо режим встановлення датчиків
     if (isEditRoom && window.setPlacementMode) {
         window.setPlacementMode(false);
     }
+
+    // Оновлюємо статус в UI (якщо потрібно)
+    const statusText = document.getElementById('status-text');
+    if (statusText) statusText.textContent = isEditRoom ? "Room Edit" : "Select Mode";
 };
 
 // 6. ГОЛОВНИЙ ЦИКЛ АНІМАЦІЇ
 function animate() {
     requestAnimationFrame(animate);
 
-    // Оновлення плавного руху камери (якщо вибрали об'єкт у списку)
-    if (uiManager && uiManager.updateCamera) {
-        uiManager.updateCamera(0.05);
-    }
+    // Плавний рух камери до об'єктів
+    if (uiManager?.updateCamera) uiManager.updateCamera(0.05);
 
-    // Оновлення фізики симуляції (лінії зв'язку, анімація)
-    if (simulator) {
-        simulator.update();
-    }
+    // Робота симулятора зв'язків
+    if (simulator.isActive) simulator.update();
 
     controls.update();
     renderer.render(scene, camera);
+
+    // ВАЖЛИВО: рендер 2D шару (метри та підписи)
+    if (labelRenderer) labelRenderer.render(scene, camera);
 }
 
-// 7. ОБРОБКА ПОДІЙ
-window.addEventListener('resize', onWindowResize);
+// 7. ОБРОБНИКИ ПОДІЙ
+window.addEventListener('resize', () => {
+    onWindowResize();
+    labelRenderer?.setSize(container.clientWidth, container.clientHeight);
+});
 
-// Автоматичне завантаження проєкту, якщо в URL є ID
 document.addEventListener('DOMContentLoaded', () => {
+    // Завантаження збереженого проєкту з бази даних
     projectManager.loadLastProject();
 
-    // Початковий режим - вибір (стрілочка)
+    // Початковий режим — вибір
     window.setMode('select');
 });
 
-// Запуск
 animate();
-
-console.log("Smart Home Builder: System initialized.");

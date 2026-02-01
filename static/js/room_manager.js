@@ -49,7 +49,7 @@ export class RoomManager {
         };
 
         this.init();
-        this.initDragLogic();
+        this.initDragLogic(); // Виклик ініціалізації логіки перетягування
     }
 
     setEditorMode(isVisible) {
@@ -109,16 +109,17 @@ export class RoomManager {
     init() {
         this.floorThickness = 0.2;
         this.floor = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), this.materials.floor);
+        this.floor.userData.isWall = false; // Позначаємо, що це підлога
         this.roomGroup.add(this.floor);
 
         this.grid = new THREE.GridHelper(1, 1, 0x3b82f6, 0xbfdbfe);
-        // ФІКС: Сітка тепер на 0.002 вище підлоги
         this.grid.position.y = 0.002;
         this.grid.material.transparent = true;
         this.grid.material.opacity = 0.3;
         this.roomGroup.add(this.grid);
 
         this.wallMesh = new THREE.Mesh(new THREE.BufferGeometry(), this.materials.wall);
+        this.wallMesh.userData.isWall = true; // Важливо для Raycaster датчиків
         this.roomGroup.add(this.wallMesh);
 
         this.wallEdges = new THREE.LineSegments(new THREE.BufferGeometry(), this.materials.edges);
@@ -138,6 +139,7 @@ export class RoomManager {
     createHandle(side, geo) {
         const mesh = new THREE.Mesh(geo, this.materials.handle.clone());
         mesh.userData.side = side;
+        mesh.userData.isHandle = true;
         mesh.userData.label = this.createLabel();
         mesh.add(mesh.userData.label);
         this.roomGroup.add(mesh);
@@ -173,14 +175,11 @@ export class RoomManager {
         this.wallMesh.geometry.dispose();
         this.wallMesh.geometry = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
         this.wallMesh.rotation.x = -Math.PI / 2;
-
-        // ФІКС Z-FIGHTING: Піднімаємо стіни на мікроскопічну відстань над підлогою
         this.wallMesh.position.y = 0.001;
 
         if (this.wallEdges.geometry) this.wallEdges.geometry.dispose();
         this.wallEdges.geometry = new THREE.EdgesGeometry(this.wallMesh.geometry);
         this.wallEdges.rotation.copy(this.wallMesh.rotation);
-        // Копіюємо позицію для ліній стін
         this.wallEdges.position.y = this.wallMesh.position.y;
 
         const formatDim = (val) => {
@@ -203,7 +202,7 @@ export class RoomManager {
         this.handles.front.rotation.set(0, 0, 0);
         this.handles.front.userData.label.element.textContent = formatDim(width);
 
-        this.handles.back.position.set(0, hPos, -hd - offset);
+        this.handles.back.position.set(0, hPos, -hw - offset);
         this.handles.back.rotation.set(0, 0, 0);
         this.handles.back.userData.label.element.textContent = formatDim(width);
 

@@ -7,7 +7,7 @@ export class Simulator {
     constructor(scene) {
         this.scene = scene;
         this.isActive = false;
-        this.connectionLines = []; // Лінії логічних зв'язків (датчик -> хаб або хмара)
+        this.connectionLines = []; // Лінії логічних зв'язків (датчик -> хаб або роутер)
         this.raycaster = new THREE.Raycaster();
     }
 
@@ -27,7 +27,7 @@ export class Simulator {
         const sensors = [];
         const hubs = [];
 
-        // 1. Сортуємо пристрої на хаби та інші датчики
+        // 1. Сортуємо пристрої на хаби/роутери та інші датчики
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
                 if (obj.userData.type === 'hub') hubs.push(obj);
@@ -43,35 +43,53 @@ export class Simulator {
             const supportsDirect = caps.some(c => PROTOCOLS.DIRECT.includes(c));
             const needsHub = caps.some(c => PROTOCOLS.BRIDGE.includes(c));
 
-            let bestHub = null;
+            let bestTarget = null;
             let status = 'offline';
 
-            // Якщо пристрій підтримує роботу через міст (Zigbee/Matter/Sub1G)
+            // ЛОГІКА ДЛЯ Zigbee / Sub1G / Matter (через Хаб)
             if (needsHub || caps.includes('matter')) {
-                let minDistance = PROTOCOLS.RANGE_MAX; // Беремо радіус із конфігу
+                let minDistance = PROTOCOLS.RANGE_MAX;
 
                 hubs.forEach(hub => {
-                    const dist = sensor.position.distanceTo(hub.position);
-                    if (dist < minDistance) {
-                        // Перевірка перешкод (стін)
-                        const signal = this.getSignalStrength(sensor.position, hub.position);
-                        if (signal > 0.2) { // Мінімальний поріг сигналу для встановлення зв'язку
-                            minDistance = dist;
-                            bestHub = hub;
-                            status = 'hub';
+                    // Ігноруємо роутери для протоколів, що потребують саме Хаб
+                    if (hub.userData.subtype !== 'router') {
+                        const dist = sensor.position.distanceTo(hub.position);
+                        if (dist < minDistance) {
+                            const signal = this.getSignalStrength(sensor.position, hub.position);
+                            if (signal > 0.2) {
+                                minDistance = dist;
+                                bestTarget = hub;
+                                status = 'hub';
+                            }
                         }
                     }
                 });
             }
 
-            // Якщо хаб не знайдено (або не підтримується), але є Wi-Fi/Direct
+            // ЛОГІКА ДЛЯ Wi-Fi (через Роутер)
+            // Якщо статус ще offline, але пристрій підтримує Wi-Fi
             if (status === 'offline' && supportsDirect) {
-                status = 'cloud';
+                let minDistance = 30; // Wi-Fi має більший радіус
+
+                hubs.forEach(hub => {
+                    if (hub.userData.subtype === 'router') {
+                        const dist = sensor.position.distanceTo(hub.position);
+                        if (dist < minDistance) {
+                            // Для Wi-Fi стіни теж впливають, але ми даємо більший запас
+                            const signal = this.getSignalStrength(sensor.position, hub.position);
+                            if (signal > 0.1) {
+                                minDistance = dist;
+                                bestTarget = hub;
+                                status = 'cloud';
+                            }
+                        }
+                    }
+                });
             }
 
             // Візуалізуємо результат
             if (status !== 'offline') {
-                this.drawLink(sensor, bestHub, status);
+                this.drawLink(sensor, bestTarget, status);
                 sensor.userData.isConnected = true;
             } else {
                 sensor.userData.isConnected = false;
@@ -92,15 +110,13 @@ export class Simulator {
         const wallsHit = intersects.filter(i => i.object.userData.isWall || i.object.name?.includes('wall'));
 
         let strength = 1.0;
-        // Використовуємо коефіцієнт затухання з конфігу
         strength -= (wallsHit.length * PROTOCOLS.WALL_ATTENUATION);
 
         return Math.max(0, strength);
     }
 
     // Візуалізація зв'язку (пунктирні лінії)
-    drawLink(sensor, hub, status) {
-        // Кольори беремо з COLORS у config.js
+    drawLink(sensor, target, status) {
         const color = status === 'cloud' ? COLORS.WIFI_LINE : COLORS.HUB_LINE;
 
         const material = new THREE.LineDashedMaterial({
@@ -114,10 +130,11 @@ export class Simulator {
         const points = [];
         points.push(sensor.position.clone());
 
-        if (status === 'hub' && hub) {
-            points.push(hub.position.clone());
+        if (target) {
+            // Лінія безпосередньо до Роутера або Хаба
+            points.push(target.position.clone());
         } else {
-            // Для Wi-Fi малюємо вертикальну лінію "вгору"
+            // Якщо пристрій Wi-Fi, але роутера немає на сцені (статус cloud теоретично не отримається без роутера тепер)
             points.push(sensor.position.clone().add(new THREE.Vector3(0, 2, 0)));
         }
 
@@ -151,7 +168,6 @@ export class Simulator {
 
     update() {
         if (!this.isActive) return;
-        // Анімація руху тире на лініях
         this.connectionLines.forEach(line => {
             if (line.material && line.material.type === 'LineDashedMaterial') {
                 line.material.dashOffset -= 0.01;

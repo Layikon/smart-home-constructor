@@ -4,122 +4,114 @@ export function initAdminTool() {
     const modal = document.getElementById('device-modal');
     const btn = document.getElementById('admin-add-device');
     const form = document.getElementById('device-form');
+    const typeSelect = document.getElementById('dev-type');
 
-    // Відкриття модального вікна
-    if (btn) btn.onclick = () => modal.classList.remove('hidden');
+    if (!modal || !form) return;
 
-    // Логіка закриття
+    // 1. Відкриття модального вікна
+    if (btn) {
+        btn.onclick = () => {
+            modal.classList.remove('hidden');
+            updateVisibleFields();
+        };
+    }
+
+    // 2. Логіка закриття (X, кнопка "Скасувати" та клік поза межами)
+    const closeElements = ['close-modal', 'close-modal-x'];
+    closeElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.onclick = () => modal.classList.add('hidden');
+    });
+
     window.addEventListener('click', (event) => {
         if (event.target === modal) modal.classList.add('hidden');
     });
 
+    // 3. Перемикання полів залежно від класу (sensor, power, motion, hub, camera)
+    function updateVisibleFields() {
+        const selectedValue = typeSelect.value;
+        const groups = document.querySelectorAll('.field-group');
+
+        groups.forEach(group => {
+            if (group.getAttribute('data-type') === selectedValue) {
+                group.classList.remove('hidden');
+            } else {
+                group.classList.add('hidden');
+            }
+        });
+    }
+
+    if (typeSelect) {
+        typeSelect.onchange = updateVisibleFields;
+    }
+
+    // 4. Відправка форми
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // 1. Збираємо Hardware Capabilities (Протоколи)
-        // Саме цей масив буде визначати, що вміє хаб (Zigbee, Matter, Thread тощо)
+        // Протоколи (Capabilities)
         const hardwareCaps = [];
         document.querySelectorAll('input[name="cap"]:checked').forEach(checkbox => {
             hardwareCaps.push(checkbox.value);
         });
 
-        // 2. Отримуємо значення з форми
-        const rawType = document.getElementById('dev-type').value;
+        const rawType = typeSelect.value;
         const brand = document.getElementById('dev-brand').value;
         const name = document.getElementById('dev-name').value;
 
-        // Шукаємо активне поле підтипу
-        const activeGroup = document.querySelector(`.field-group:not(.hidden)`);
+        // Отримуємо підтип з активної групи
+        const activeGroup = document.querySelector(`.field-group[data-type="${rawType}"]`);
         const subtypeSelect = activeGroup ? activeGroup.querySelector('select') : null;
         const subType = subtypeSelect ? subtypeSelect.value : rawType;
 
-        // Логіка для навантаження (тільки для Електрики)
-        const maxLoadInput = activeGroup ? activeGroup.querySelector('input[type="number"]') : null;
-        const maxLoadValue = maxLoadInput ? maxLoadInput.value : null;
+        // Отримуємо живлення
+        const powerSource = document.querySelector('input[name="power"]:checked')?.value || 'battery';
 
-        // Логіка для живлення (Батарейка / USB / 220V)
-        // Для хаба це теж важливо (зазвичай це USB або 220V)
-        const powerSource = document.querySelector('input[name="power"]:checked')?.value || 'usb';
-
-        // 3. Синхронізація типів
-        const typeMapping = {
-            'sensor': subType,
-            'power': subType,
-            'motion': subType,
-            'camera': 'camera',
-            'hub': 'hub' // Хаб завжди лишається хабом
-        };
-
-        const finalType = typeMapping[rawType] || rawType;
-
-        // Автоматичний розподіл категорій
+        // Категорії для сайдбару
         const categoryMapping = {
-            // Клімат
-            'temp/hum': 'Клімат', 'temp': 'Клімат', 'hum': 'Клімат', 'air': 'Клімат', 'press': 'Клімат',
-            // Безпека
-            'motion': 'Безпека', 'door': 'Безпека', 'leak': 'Безпека', 'smoke': 'Безпека', 'gas': 'Безпека',
-            // Електрика
-            'power': 'Електрика', 'socket': 'Електрика', 'switch': 'Електрика', 'relay': 'Електрика', 'light': 'Електрика',
-            // Інше
+            'sensor': 'Клімат',
+            'motion': 'Безпека',
+            'power': 'Електрика',
             'camera': 'Камери',
             'hub': 'Керування'
         };
 
-        const currentCategory = categoryMapping[finalType] || 'Інше';
+        const currentCategory = categoryMapping[rawType] || 'Керування';
 
-        // Карта 3D-моделей
-        const modelMap = {
-            'temp/hum': 'temp_sensor.glb',
-            'motion': 'motion_sensor.glb',
-            'door': 'motion_sensor.glb',
-            'leak': 'motion_sensor.glb',
-            'smoke': 'motion_sensor.glb',
-            'gas': 'motion_sensor.glb',
-            'power': 'socket.glb',
-            'socket': 'socket.glb',
-            'switch': 'socket.glb',
-            'relay': 'socket.glb',
-            'light': 'socket.glb',
-            'camera': 'camera.glb',
-            'hub': 'hub.glb'
-        };
-
-        // 4. Формуємо об'єкт пристрою для бази даних
+        // Об'єкт пристрою
         const newDevice = {
             id: `dev_${Date.now().toString().slice(-6)}`,
             brand: brand,
             category: currentCategory,
             name: name,
-            type: finalType,
+            type: subType, // Використовуємо підтип як ключ для моделей в config.js
             subtype: subType,
             icon_file: "1.png",
-            model_path: modelMap[finalType] || "unified_sensor.glb",
-            capabilities: hardwareCaps, // Тут лежать протоколи хаба
+            model_path: "", // Порожньо для автопідбору
+            capabilities: hardwareCaps,
             features: {
                 power: powerSource,
-                // Хаб не потребує хаба (він сам хаб), решта потребують
-                requires_hub: finalType !== 'hub' && finalType !== 'camera' && finalType !== 'wifi_socket'
+                requires_hub: !hardwareCaps.includes('wifi') && rawType !== 'hub' && rawType !== 'camera',
+                is_master: rawType === 'hub'
             }
         };
 
-        // Додаємо макс. навантаження (для Електрики)
-        if (maxLoadValue) {
-            newDevice.max_load = maxLoadValue + "W";
+        // Логіка для Хабів та Роутерів
+        if (rawType === 'hub') {
+            if (subType === 'router') {
+                newDevice.features.serves_protocols = ['wifi'];
+            } else {
+                newDevice.features.serves_protocols = hardwareCaps.filter(c => c !== 'wifi');
+            }
+            newDevice.features.max_devices = 128;
         }
 
-        // --- СПЕЦІАЛЬНА ЛОГІКА ДЛЯ ХАБІВ ---
-        if (finalType === 'hub') {
-            // 1. Позначаємо, що цей пристрій керує іншими
-            newDevice.features.is_master = true;
-
-            // 2. Визначаємо протоколи, які він "роздає" (Zigbee, Thread, BLE)
-            // Виключаємо WiFi/Ethernet, бо це канали зв'язку з інтернетом, а не з датчиками
-            newDevice.features.serves_protocols = hardwareCaps.filter(cap =>
-                cap !== 'wifi' && cap !== 'ethernet'
-            );
-
-            // 3. (Опціонально) Максимальна кількість пристроїв, якщо знадобиться
-            newDevice.features.max_devices = 128;
+        // Макс. навантаження для Електрики
+        if (rawType === 'power') {
+            const loadInput = activeGroup ? activeGroup.querySelector('input[type="number"]') : null;
+            if (loadInput && loadInput.value) {
+                newDevice.features.max_load = loadInput.value + "W";
+            }
         }
 
         try {
@@ -130,16 +122,16 @@ export function initAdminTool() {
             });
 
             if (response.ok) {
-                console.log("Пристрій збережено в базу:", newDevice);
                 modal.classList.add('hidden');
                 form.reset();
                 window.location.reload();
             } else {
-                const errorData = await response.json();
-                alert("Помилка: " + errorData.message);
+                const result = await response.json();
+                alert("Помилка: " + (result.message || "Не вдалося зберегти"));
             }
         } catch (error) {
-            console.error("Помилка мережі:", error);
+            console.error("Network Error:", error);
+            alert("Помилка мережі при спробі зв'язатися з сервером.");
         }
     };
 }
