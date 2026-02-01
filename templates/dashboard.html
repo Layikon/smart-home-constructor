@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Мої Проєкти | Smart Home Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-900">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            <a href="/" class="flex items-center space-x-2 text-slate-800 hover:text-blue-600 transition">
+                <i class="fa-solid fa-house-signal text-orange-500 text-xl"></i>
+                <span class="font-bold text-lg">Smart Home</span>
+            </a>
+
+            <div class="flex items-center space-x-4">
+                <span class="text-sm font-bold text-slate-500">{{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="text-slate-400 hover:text-red-500 transition" title="Вийти">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-10">
+
+        <div class="flex justify-between items-end mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900">Мої Проєкти</h1>
+                <p class="text-slate-500 mt-1">Керуйте своїми збереженими кімнатами</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            <a href="/editor" class="group bg-white border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-8 h-64 hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
+                    <i class="fa-solid fa-plus text-2xl text-slate-400 group-hover:text-blue-600"></i>
+                </div>
+                <span class="font-bold text-slate-600 group-hover:text-blue-700">Створити Новий</span>
+            </a>
+
+            {% for project in projects %}
+            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 group relative flex flex-col h-64" id="project-card-{{ project.id }}">
+
+                <div class="bg-slate-100 h-32 flex items-center justify-center relative overflow-hidden group-hover:bg-slate-200 transition">
+                    <i class="fa-solid fa-house-laptop text-4xl text-slate-300"></i>
+
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition backdrop-blur-[2px]">
+                        <a href="/editor?id={{ project.id }}" class="bg-white text-slate-900 px-6 py-2 rounded-full font-bold text-sm hover:scale-105 transition shadow-lg">
+                            Відкрити
+                        </a>
+                    </div>
+                </div>
+
+                <div class="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800 leading-tight mb-1 truncate">{{ project.name }}</h3>
+                        <p class="text-xs text-slate-400">Змінено: {{ project.date_posted.strftime('%d.%m.%Y') }}</p>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-50 mt-2">
+                        <button onclick="deleteProject({{ project.id }})" class="text-xs font-bold text-slate-400 hover:text-red-500 flex items-center gap-1 transition">
+                            <i class="fa-solid fa-trash"></i> Видалити
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+    </main>
+
+    <script>
+        async function deleteProject(id) {
+            if (!confirm('Ви впевнені, що хочете видалити цей проєкт?')) return;
+
+            try {
+                const response = await fetch(`/api/delete_project/${id}`, {
+                    method: 'DELETE'
+                });
+                const res = await response.json();
+
+                if (res.status === 'success') {
+                    // Анімація видалення
+                    const card = document.getElementById(`project-card-${id}`);
+                    card.style.transform = 'scale(0.9)';
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 300);
+                } else {
+                    alert('Помилка: ' + res.message);
+                }
+            } catch (error) {
+                alert('Помилка з\'єднання');
+            }
+        }
+    </script>
+</body>
+</html>

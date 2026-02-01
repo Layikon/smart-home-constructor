@@ -6,7 +6,6 @@
     <title>3D Editor | Smart Home Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
     <link rel="stylesheet" href="/static/css/style.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -22,7 +21,7 @@
                 <i class="fa-solid fa-chevron-left mr-1"></i> Назад
             </a>
             <div class="h-4 w-px bg-slate-200"></div>
-            <span class="text-sm font-bold tracking-widest text-slate-400 uppercase">Editor <span class="text-blue-600 font-black">v0.0</span></span>
+            <span class="text-sm font-bold tracking-widest text-slate-400 uppercase">Editor <span class="text-blue-600 font-black">v1.2</span></span>
         </div>
         <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4">
             <button id="mode-edit" class="px-4 py-1 text-[10px] font-bold uppercase rounded bg-white shadow-sm text-blue-600">
@@ -36,9 +35,12 @@
             <button id="admin-add-device" class="bg-slate-100 text-slate-700 px-4 py-1.5 rounded text-xs font-bold hover:bg-slate-200 transition">
                 <i class="fa-solid fa-plus mr-1"></i> База пристроїв
             </button>
-            <button class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200">
-                Зберегти проєкт
+
+            <button id="save-project-btn" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200 flex items-center gap-2">
+                <i class="fa-solid fa-save"></i>
+                <span>Зберегти проєкт</span>
             </button>
+
             <button class="bg-slate-800 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-slate-900 transition">
                 Експорт
             </button>
@@ -74,6 +76,13 @@
         {% include 'filter_panel.html' %}
 
         <main class="flex-1 relative bg-white viewport-container w-full h-full" id="viewport">
+            <div id="loading-overlay" class="absolute inset-0 z-50 bg-white/80 backdrop-blur flex items-center justify-center hidden">
+                <div class="text-center">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500 mb-3"></i>
+                    <p class="text-slate-600 font-bold text-sm uppercase">Завантаження проєкту...</p>
+                </div>
+            </div>
+
             <div class="absolute bottom-4 left-4 pointer-events-none z-10">
                 <div id="status-indicator" class="flex items-center space-x-2 bg-white/80 px-3 py-1.5 rounded-full border border-slate-200 backdrop-blur-sm shadow-sm transition-colors duration-300">
                     <div id="status-dot" class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
@@ -87,8 +96,7 @@
                 <i class="fa-solid fa-chevron-right" id="toggle-icon"></i>
             </button>
 
-
-
+            <div id="panel-content" class="flex-1 flex flex-col overflow-hidden w-64">
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Інвентар сцени</h3>
                     <span id="sensor-count" class="bg-blue-100 px-2 py-0.5 rounded text-[9px] text-blue-600 font-bold">0</span>
@@ -108,8 +116,10 @@
         import { initAdminTool } from '/static/js/admin_tool.js';
         import { RoomManager } from '/static/js/room_manager.js';
         import { Simulator } from '/static/js/simulator.js';
+        // НОВИЙ ІМПОРТ
+        import { ProjectManager } from '/static/js/project_manager.js';
 
-        // Ініціалізація
+        // Ініціалізація сцени
         const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
         const container = document.getElementById('viewport');
         const labelRenderer = initLabelRenderer(container);
@@ -119,21 +129,38 @@
         const simulator = new Simulator(scene);
         draggableObjects.push(room.floor, room.wallMesh);
 
+        // Ініціалізація UI
         let selectedSensor = { type: 'temp', color: 0x3b82f6 };
         const uiManager = initUI(scene, camera, controls, (newConfig) => {
             selectedSensor = newConfig;
         });
 
+        // Ініціалізація логіки розміщення
         initSensorPlacement(container, scene, camera, draggableObjects, () => selectedSensor);
         initAdminTool();
 
+        // --- ПІДКЛЮЧЕННЯ PROJECT MANAGER (НОВЕ) ---
+        const projectManager = new ProjectManager(scene, room, uiManager, draggableObjects);
+
+        // 1. Прив'язуємо кнопку збереження
+        const saveBtn = document.getElementById('save-project-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                projectManager.saveProject('save-project-btn');
+            });
+        }
+
+        // 2. Запускаємо автозавантаження
+        projectManager.loadLastProject();
+
+
+        // --- ЗАГАЛЬНІ ПОДІЇ ТА АНІМАЦІЯ ---
         window.onWindowResizeGlobal = onWindowResize;
 
-        // --- ЛОГІКА ПЕРЕМИКАННЯ РЕЖИМІВ ---
+        // UI Керування режимами
         const btnEdit = document.getElementById('mode-edit');
         const btnSimulate = document.getElementById('mode-simulate');
         const mainSidebar = document.getElementById('main-sidebar');
-
         const statusText = document.getElementById('status-text');
         const statusDot = document.getElementById('status-dot');
 
@@ -163,7 +190,6 @@
                 statusText.classList.replace('text-green-600', 'text-slate-500');
                 statusDot.classList.replace('bg-green-500', 'bg-blue-500');
             }
-
             if (isSimulate && window.setPlacementMode) window.setPlacementMode(false);
         }
 
@@ -186,32 +212,24 @@
 
         document.getElementById('close-drawer-btn').addEventListener('click', () => {
             document.getElementById('device-drawer').classList.remove('open');
-            const filterDrawer = document.getElementById('filter-drawer');
-            if (filterDrawer) filterDrawer.classList.remove('open');
             document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500', 'text-blue-500'));
             if (window.setPlacementMode) window.setPlacementMode(false);
             document.getElementById('tool-select').classList.add('active');
         });
 
-        animate();
-    </script>
-
-    <script>
         document.addEventListener('DOMContentLoaded', () => {
             const rightPanel = document.getElementById('right-panel');
             const toggleRightBtn = document.getElementById('toggle-right-panel');
-            const toggleIcon = document.getElementById('toggle-icon');
-
             if (toggleRightBtn && rightPanel) {
                 toggleRightBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const isClosed = rightPanel.classList.toggle('closed');
-                    if (toggleIcon) {
-                        toggleIcon.style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)';
-                    }
+                    rightPanel.classList.toggle('closed');
+                    document.getElementById('toggle-icon').classList.toggle('rotate-180');
                 });
             }
         });
+
+        animate();
     </script>
 </body>
 </html>
