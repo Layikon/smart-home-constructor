@@ -17,6 +17,28 @@
                 "power": "battery",
                 "requires_hub": true
             }
+        },
+        {
+            "id": "dev_174108",
+            "brand": "Xiaomi",
+            "category": "Клімат",
+            "name": "789798797978",
+            "type": "temp/hum",
+            "subtype": "temp/hum",
+            "icon_file": "1.png",
+            "model_path": "temp_sensor.glb",
+            "capabilities": [
+                "wifi",
+                "matter",
+                "zigbee",
+                "thread",
+                "sub1g",
+                "ble"
+            ],
+            "features": {
+                "power": "battery",
+                "requires_hub": true
+            }
         }
     ]
 }

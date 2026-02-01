@@ -1,5 +1,3 @@
-// static/js/ui_manager.js
-
 export function initUI(scene, camera, controls, onSensorSelectCallback) {
     const sensorsContainer = document.getElementById('dynamic-sensors');
     const selectToolBtn = document.getElementById('tool-select');
@@ -151,22 +149,42 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             return;
         }
 
+        const protocolColors = {
+            'wifi': 'bg-blue-50 text-blue-600 border-blue-100',
+            'zigbee': 'bg-orange-50 text-orange-600 border-orange-100',
+            'matter': 'bg-purple-50 text-purple-600 border-purple-100',
+            'thread': 'bg-emerald-50 text-emerald-600 border-emerald-100',
+            'ble': 'bg-cyan-50 text-cyan-600 border-cyan-100',
+            'sub1g': 'bg-indigo-50 text-indigo-600 border-indigo-100'
+        };
+
         devices.forEach((device) => {
             const item = document.createElement('div');
-            item.className = 'drawer-item hover:bg-slate-50 transition-colors';
+            item.className = 'drawer-item hover:bg-slate-50 transition-all border-b border-slate-50 last:border-0 p-3 flex gap-3 cursor-pointer';
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
-            const mainProtocol = device.capabilities?.[0] || device.protocol || 'N/A';
+
+            const caps = (device.capabilities && device.capabilities.length > 0)
+                ? device.capabilities
+                : [device.protocol || 'N/A'];
+
+            const protocolsHtml = caps.map(proto => {
+                const key = proto.toLowerCase();
+                const colorClass = protocolColors[key] || 'bg-slate-50 text-slate-500 border-slate-100';
+                return `<span class="text-[7px] ${colorClass} px-1.5 py-0.5 rounded-sm border font-bold uppercase tracking-tight">${proto}</span>`;
+            }).join('');
 
             item.innerHTML = `
-                <div class="icon-wrapper border-slate-100 bg-white shadow-sm">
+                <div class="icon-wrapper flex-shrink-0 w-12 h-12 border border-slate-100 rounded-lg bg-white p-1 shadow-sm overflow-hidden">
                     <img src="${iconPath}" class="w-full h-full object-contain">
                 </div>
-                <div class="flex flex-col overflow-hidden">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[10px] text-blue-500 font-bold uppercase tracking-tighter opacity-80">${device.brand}</span>
-                        <span class="text-[8px] bg-slate-100 px-1 rounded text-slate-500 font-mono uppercase">${mainProtocol}</span>
+                <div class="flex flex-col flex-1 min-w-0 justify-center">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[9px] text-blue-500 font-bold uppercase tracking-wider">${device.brand}</span>
                     </div>
-                    <span class="text-[11px] text-slate-700 font-bold leading-tight truncate">${device.name}</span>
+                    <span class="text-[11px] text-slate-700 font-bold truncate mb-1.5">${device.name}</span>
+                    <div class="flex flex-wrap gap-1">
+                        ${protocolsHtml}
+                    </div>
                 </div>
             `;
 
@@ -181,7 +199,6 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                     capabilities: device.capabilities || [],
                     features: device.features || {}
                 };
-                // ВАЖЛИВО: Спочатку оновлюємо дані, потім вмикаємо фантом
                 onSensorSelectCallback(sensorConfig);
                 if (window.setPlacementMode) window.setPlacementMode(true);
             };
