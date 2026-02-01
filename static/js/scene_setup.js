@@ -46,16 +46,16 @@ export function initScene(containerId) {
     dirLight.shadow.mapSize.height = 2048;
     scene.add(dirLight);
 
-    // 6. СІТКА СЦЕНИ (Оновлений стиль)
-    // Основна сітка - темніша для видності на сірому фоні
-    const mainGrid = new THREE.GridHelper(100, 20, 0x3b82f6, 0xcbd5e1);
-    mainGrid.material.opacity = 0.3;
+    // 6. СІТКА СЦЕНИ (Оновлений синюватий стиль)
+    // Основна сітка - насичений синій (Blue 600) для головних осей та блакитний (Blue 400)
+    const mainGrid = new THREE.GridHelper(100, 20, 0x2563eb, 0x60a5fa);
+    mainGrid.material.opacity = 0.4;
     mainGrid.material.transparent = true;
     mainGrid.position.y = -0.01;
     scene.add(mainGrid);
 
-    // Допоміжна сітка - ледь помітна
-    const subGrid = new THREE.GridHelper(100, 100, 0xe2e8f0, 0xe2e8f0);
+    // Допоміжна сітка - ледь помітна світло-блакитна лінія (Blue 200)
+    const subGrid = new THREE.GridHelper(100, 100, 0xbfdbfe, 0xbfdbfe);
     subGrid.material.opacity = 0.2;
     subGrid.material.transparent = true;
     subGrid.position.y = -0.015;

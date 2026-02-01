@@ -1,63 +1,102 @@
 // static/js/main.js
-import { setupScene } from './viewer.js';
-import { createRoom, drawDimensions } from './objects.js';
 
-// 1. Отримуємо контейнер для рендеру
-const container = document.getElementById('viewport');
-const uiOverlay = document.getElementById('ui-overlay');
+import { initScene } from './scene_setup.js';
+import { RoomManager } from './room_manager.js';
+import { initUI } from './ui_manager.js';
+import { initSensorPlacement } from './sensors.js';
+import { ProjectManager } from './project_manager.js';
+import { Simulator } from './simulator.js';
 
-// 2. Налаштовуємо сцену (камера зверху, світло, сітка)
-const { scene, camera, renderer, controls } = setupScene(container);
+// 1. Ініціалізація базової сцени (в'юпорт, камера, рендерер)
+const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
 
-// 3. Створюємо початкову кімнату (наприклад, 6 на 4 метри)
-// У майбутньому ми зможемо викликати цю функцію при натисканні на кнопку "+"
-let mainRoom = createRoom(scene, 6, 4);
+// 2. Ініціалізація менеджерів
+const roomManager = new RoomManager(scene, camera, renderer);
+const simulator = new Simulator(scene);
 
-// 4. Головний цикл анімації
+// Перемінна для зберігання конфігурації обраного датчика
+let selectedSensorConfig = null;
+
+// Функція-колбек для UI: коли користувач обирає датчик у меню
+const onSensorSelect = (config) => {
+    selectedSensorConfig = config;
+};
+
+// 3. Ініціалізація інтерфейсу (Sidebar, список об'єктів, камери)
+const uiManager = initUI(scene, camera, controls, onSensorSelect);
+
+// 4. Ініціалізація системи розміщення датчиків
+initSensorPlacement(
+    renderer.domElement,
+    scene,
+    camera,
+    draggableObjects,
+    () => selectedSensorConfig // Передаємо функцію, яка повертає актуальний конфіг
+);
+
+// 5. Менеджер проєктів (Збереження/Завантаження)
+const projectManager = new ProjectManager(scene, roomManager, uiManager, draggableObjects);
+
+// --- ГЛОБАЛЬНІ ФУНКЦІЇ ДЛЯ КНОПОК В HTML ---
+
+// Збереження проєкту (викликається з editor.html)
+window.saveProject = () => projectManager.saveProject('save-project-btn');
+
+// Перемикання режиму симуляції
+window.toggleSimulation = (btn) => {
+    const isActive = btn.classList.contains('active');
+    if (!isActive) {
+        btn.classList.add('active', 'bg-orange-500', 'text-white');
+        btn.innerHTML = '<i class="fa-solid fa-stop"></i> Стоп';
+        simulator.toggle(true);
+    } else {
+        btn.classList.remove('active', 'bg-orange-500', 'text-white');
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Симуляція';
+        simulator.toggle(false);
+    }
+};
+
+// Зміна режиму редактора (стіни/датчики)
+window.setMode = (mode) => {
+    const isEditRoom = (mode === 'room');
+    roomManager.setEditorMode(isEditRoom);
+
+    // Якщо перейшли в режим кімнати - вимикаємо розміщення датчиків
+    if (isEditRoom && window.setPlacementMode) {
+        window.setPlacementMode(false);
+    }
+};
+
+// 6. ГОЛОВНИЙ ЦИКЛ АНІМАЦІЇ
 function animate() {
     requestAnimationFrame(animate);
 
-    // Оновлюємо контролери (OrbitControls)
-    controls.update();
-
-    // Оновлюємо відображення розмірів (см) поверх 3D об'єкта
-    if (mainRoom) {
-        drawDimensions(uiOverlay, mainRoom, camera, container);
+    // Оновлення плавного руху камери (якщо вибрали об'єкт у списку)
+    if (uiManager && uiManager.updateCamera) {
+        uiManager.updateCamera(0.05);
     }
 
-    // Малюємо сцену
+    // Оновлення фізики симуляції (лінії зв'язку, анімація)
+    if (simulator) {
+        simulator.update();
+    }
+
+    controls.update();
     renderer.render(scene, camera);
 }
 
-// 5. Обробка зміни розміру вікна браузера
-window.addEventListener('resize', () => {
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const aspect = width / height;
+// 7. ОБРОБКА ПОДІЙ
+window.addEventListener('resize', onWindowResize);
 
-    // Оновлюємо параметри ортографічної камери
-    const d = 5;
-    camera.left = -d * aspect;
-    camera.right = d * aspect;
-    camera.top = d;
-    camera.bottom = -d;
+// Автоматичне завантаження проєкту, якщо в URL є ID
+document.addEventListener('DOMContentLoaded', () => {
+    projectManager.loadLastProject();
 
-    camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
+    // Початковий режим - вибір (стрілочка)
+    window.setMode('select');
 });
 
-// 6. Додаємо обробник для кнопки "Додати кімнату" (якщо потрібно створити нову)
-const addRoomBtn = document.getElementById('add-room');
-if (addRoomBtn) {
-    addRoomBtn.addEventListener('click', () => {
-        // Логіка створення ще однієї кімнати
-        console.log("Додаємо нову кімнату...");
-        const newRoom = createRoom(scene, 3, 3);
-        // Можна додати логіку вибору кімнати для редагування
-    });
-}
-
-// Запускаємо рендер
+// Запуск
 animate();
 
-console.log("Smart Home Editor: Main module loaded.");
+console.log("Smart Home Builder: System initialized.");

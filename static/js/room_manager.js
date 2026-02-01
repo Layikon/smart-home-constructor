@@ -8,7 +8,6 @@ export class RoomManager {
         this.camera = camera;
         this.renderer = renderer;
 
-        // Група кімнати, яку ми будемо рухати для ефекту розтягування
         this.roomGroup = new THREE.Group();
         this.scene.add(this.roomGroup);
 
@@ -20,11 +19,10 @@ export class RoomManager {
 
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-        // Площина перетягування завжди на рівні підлоги (Y=0)
         this.dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         this.intersection = new THREE.Vector3();
 
-        // Матеріали (Optimized reuse)
+        // Матеріали
         this.materials = {
             wall: new THREE.MeshPhongMaterial({
                 color: 0xd1d5db,
@@ -33,10 +31,10 @@ export class RoomManager {
                 side: THREE.DoubleSide,
                 shininess: 40
             }),
-            floor: new THREE.MeshPhongMaterial({
-                color: 0xffffff,
-                transparent: false,
-                opacity: 1
+            floor: new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                roughness: 0.8,
+                metalness: 0.1
             }),
             handle: new THREE.MeshBasicMaterial({
                 color: 0x3b82f6,
@@ -86,12 +84,10 @@ export class RoomManager {
         return new THREE.CSS2DObject(div);
     }
 
-    // Оновлена логіка датчиків: враховує зміщення центру кімнати
     updateSensors() {
         const { width, depth } = this.params;
         const center = this.roomGroup.position;
 
-        // Глобальні межі стін
         const minX = center.x - width / 2;
         const maxX = center.x + width / 2;
         const minZ = center.z - depth / 2;
@@ -102,12 +98,8 @@ export class RoomManager {
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
                 const pos = obj.position;
-
-                // Перевіряємо вихід за межі по X
                 if (pos.x > maxX - tolerance) pos.x = maxX;
                 else if (pos.x < minX + tolerance) pos.x = minX;
-
-                // Перевіряємо вихід за межі по Z
                 if (pos.z > maxZ - tolerance) pos.z = maxZ;
                 else if (pos.z < minZ + tolerance) pos.z = minZ;
             }
@@ -115,12 +107,13 @@ export class RoomManager {
     }
 
     init() {
-        this.floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.materials.floor);
-        this.floor.rotation.x = -Math.PI / 2;
+        this.floorThickness = 0.2;
+        this.floor = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), this.materials.floor);
         this.roomGroup.add(this.floor);
 
         this.grid = new THREE.GridHelper(1, 1, 0x3b82f6, 0xbfdbfe);
-        this.grid.position.y = 0.01;
+        // ФІКС: Сітка тепер на 0.002 вище підлоги
+        this.grid.position.y = 0.002;
         this.grid.material.transparent = true;
         this.grid.material.opacity = 0.3;
         this.roomGroup.add(this.grid);
@@ -132,7 +125,6 @@ export class RoomManager {
         this.roomGroup.add(this.wallEdges);
 
         const handleGeo = new THREE.BoxGeometry(1.2, 0.15, 0.15);
-        // Створюємо ручки один раз, далі тільки оновлюємо позиції
         this.handles = {
             right: this.createHandle('right', handleGeo),
             left: this.createHandle('left', handleGeo),
@@ -155,21 +147,21 @@ export class RoomManager {
     updateRoom() {
         const { width, depth, height, thickness } = this.params;
 
-        this.floor.scale.set(width, depth, 1);
+        this.floor.scale.set(width, this.floorThickness, depth);
+        this.floor.position.y = -(this.floorThickness / 2);
+
         this.grid.scale.set(width, 1, depth);
 
         const shape = new THREE.Shape();
         const hw = width / 2;
         const hd = depth / 2;
 
-        // Зовнішній контур
         shape.moveTo(-hw, -hd);
         shape.lineTo(hw, -hd);
         shape.lineTo(hw, hd);
         shape.lineTo(-hw, hd);
         shape.closePath();
 
-        // Внутрішній отвір (стіни)
         const hole = new THREE.Path();
         hole.moveTo(-hw + thickness, -hd + thickness);
         hole.lineTo(hw - thickness, -hd + thickness);
@@ -182,11 +174,15 @@ export class RoomManager {
         this.wallMesh.geometry = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
         this.wallMesh.rotation.x = -Math.PI / 2;
 
+        // ФІКС Z-FIGHTING: Піднімаємо стіни на мікроскопічну відстань над підлогою
+        this.wallMesh.position.y = 0.001;
+
         if (this.wallEdges.geometry) this.wallEdges.geometry.dispose();
         this.wallEdges.geometry = new THREE.EdgesGeometry(this.wallMesh.geometry);
         this.wallEdges.rotation.copy(this.wallMesh.rotation);
+        // Копіюємо позицію для ліній стін
+        this.wallEdges.position.y = this.wallMesh.position.y;
 
-        // Оновлення позицій ручок
         const formatDim = (val) => {
             const m = Math.floor(val);
             const cm = Math.round((val - m) * 100);
@@ -217,7 +213,6 @@ export class RoomManager {
     initDragLogic() {
         const onDown = (e) => {
             if (this.handles.right && !this.handles.right.visible) return;
-
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -235,7 +230,6 @@ export class RoomManager {
 
         const onMove = (e) => {
             if (!this.isDragging || !this.activeHandle) return;
-
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -247,46 +241,34 @@ export class RoomManager {
                 const currentPos = this.roomGroup.position;
                 const { width, depth } = this.params;
 
-                // --- НОВА ЛОГІКА РОЗТЯГУВАННЯ ---
-                // Ми змінюємо розмір І зміщуємо центр кімнати, щоб протилежна сторона стояла на місці
-
                 if (side === 'right') {
-                    // Ліва стіна фіксована
                     const leftEdgeX = currentPos.x - width / 2;
                     let newWidth = this.snapValue(this.intersection.x - leftEdgeX);
                     if (newWidth < 2) newWidth = 2;
-
                     this.params.width = newWidth;
                     this.roomGroup.position.x = leftEdgeX + newWidth / 2;
                 }
                 else if (side === 'left') {
-                    // Права стіна фіксована
                     const rightEdgeX = currentPos.x + width / 2;
                     let newWidth = this.snapValue(rightEdgeX - this.intersection.x);
                     if (newWidth < 2) newWidth = 2;
-
                     this.params.width = newWidth;
                     this.roomGroup.position.x = rightEdgeX - newWidth / 2;
                 }
                 else if (side === 'front') {
-                    // Задня стіна фіксована
                     const backEdgeZ = currentPos.z - depth / 2;
                     let newDepth = this.snapValue(this.intersection.z - backEdgeZ);
                     if (newDepth < 2) newDepth = 2;
-
                     this.params.depth = newDepth;
                     this.roomGroup.position.z = backEdgeZ + newDepth / 2;
                 }
                 else if (side === 'back') {
-                    // Передня стіна фіксована
                     const frontEdgeZ = currentPos.z + depth / 2;
                     let newDepth = this.snapValue(frontEdgeZ - this.intersection.z);
                     if (newDepth < 2) newDepth = 2;
-
                     this.params.depth = newDepth;
                     this.roomGroup.position.z = frontEdgeZ - newDepth / 2;
                 }
-
                 this.updateRoom();
                 this.syncUI();
             }
