@@ -1,1 +1,2 @@
 # smart-home-constructor
+Опис
