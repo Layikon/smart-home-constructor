@@ -11,12 +11,19 @@ export class Simulator {
         this.raycaster = new THREE.Raycaster();
     }
 
+    // Оновлений метод toggle
     toggle(state) {
         this.isActive = state;
         if (this.isActive) {
             this.runSimulation();
         } else {
             this.clearSimulation();
+            // Скидаємо статус підключення у userData всіх сенсорів при вимкненні
+            this.scene.traverse((obj) => {
+                if (obj.userData && obj.userData.isSensor) {
+                    obj.userData.isConnected = false;
+                }
+            });
         }
     }
 
@@ -67,7 +74,6 @@ export class Simulator {
             }
 
             // ЛОГІКА ДЛЯ Wi-Fi (через Роутер)
-            // Якщо статус ще offline, але пристрій підтримує Wi-Fi
             if (status === 'offline' && supportsDirect) {
                 let minDistance = 30; // Wi-Fi має більший радіус
 
@@ -75,7 +81,6 @@ export class Simulator {
                     if (hub.userData.subtype === 'router') {
                         const dist = sensor.position.distanceTo(hub.position);
                         if (dist < minDistance) {
-                            // Для Wi-Fi стіни теж впливають, але ми даємо більший запас
                             const signal = this.getSignalStrength(sensor.position, hub.position);
                             if (signal > 0.1) {
                                 minDistance = dist;
@@ -106,8 +111,12 @@ export class Simulator {
         this.raycaster.set(start, direction);
         this.raycaster.far = distance;
 
+        // Перевіряємо тільки об'єкти, що мають властивість isWall або ім'я wall
         const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-        const wallsHit = intersects.filter(i => i.object.userData.isWall || i.object.name?.includes('wall'));
+        const wallsHit = intersects.filter(i =>
+            i.object.userData.isWall ||
+            (i.object.name && i.object.name.toLowerCase().includes('wall'))
+        );
 
         let strength = 1.0;
         strength -= (wallsHit.length * PROTOCOLS.WALL_ATTENUATION);
@@ -131,10 +140,8 @@ export class Simulator {
         points.push(sensor.position.clone());
 
         if (target) {
-            // Лінія безпосередньо до Роутера або Хаба
             points.push(target.position.clone());
         } else {
-            // Якщо пристрій Wi-Fi, але роутера немає на сцені (статус cloud теоретично не отримається без роутера тепер)
             points.push(sensor.position.clone().add(new THREE.Vector3(0, 2, 0)));
         }
 
@@ -146,7 +153,7 @@ export class Simulator {
         this.connectionLines.push(line);
     }
 
-    // Малюємо червоне кільце під датчиком, якщо він без зв'язку
+    // Червоне кільце
     drawWarning(sensor) {
         const ringGeo = new THREE.RingGeometry(0.15, 0.2, 32);
         const ringMat = new THREE.MeshBasicMaterial({

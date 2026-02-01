@@ -6,29 +6,43 @@ export function initAdminTool() {
     const form = document.getElementById('device-form');
     const typeSelect = document.getElementById('dev-type');
 
-    if (!modal || !form) return;
+    if (!modal || !form) {
+        console.warn("Admin tool elements not found in DOM");
+        return;
+    }
 
     // 1. Відкриття модального вікна
     if (btn) {
-        btn.onclick = () => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Зупиняємо розповсюдження події
             modal.classList.remove('hidden');
             updateVisibleFields();
         };
     }
 
-    // 2. Логіка закриття (X, кнопка "Скасувати" та клік поза межами)
+    // 2. Логіка закриття (X, кнопка "Скасувати" та клік поза межами вікна)
     const closeElements = ['close-modal', 'close-modal-x'];
     closeElements.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.onclick = () => modal.classList.add('hidden');
+        if (el) {
+            el.onclick = (e) => {
+                e.preventDefault();
+                modal.classList.add('hidden');
+            };
+        }
     });
 
-    window.addEventListener('click', (event) => {
-        if (event.target === modal) modal.classList.add('hidden');
-    });
+    // Закриття при кліку на темний фон
+    modal.onclick = (event) => {
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+        }
+    };
 
     // 3. Перемикання полів залежно від класу (sensor, power, motion, hub, camera)
     function updateVisibleFields() {
+        if (!typeSelect) return;
         const selectedValue = typeSelect.value;
         const groups = document.querySelectorAll('.field-group');
 
@@ -51,7 +65,7 @@ export function initAdminTool() {
 
         // Протоколи (Capabilities)
         const hardwareCaps = [];
-        document.querySelectorAll('input[name="cap"]:checked').forEach(checkbox => {
+        form.querySelectorAll('input[name="cap"]:checked').forEach(checkbox => {
             hardwareCaps.push(checkbox.value);
         });
 
@@ -59,13 +73,13 @@ export function initAdminTool() {
         const brand = document.getElementById('dev-brand').value;
         const name = document.getElementById('dev-name').value;
 
-        // Отримуємо підтип з активної групи
-        const activeGroup = document.querySelector(`.field-group[data-type="${rawType}"]`);
+        // Шукаємо активну групу полів за data-type
+        const activeGroup = form.querySelector(`.field-group[data-type="${rawType}"]`);
         const subtypeSelect = activeGroup ? activeGroup.querySelector('select') : null;
         const subType = subtypeSelect ? subtypeSelect.value : rawType;
 
-        // Отримуємо живлення
-        const powerSource = document.querySelector('input[name="power"]:checked')?.value || 'battery';
+        // Отримуємо значення живлення (radio button)
+        const powerSource = form.querySelector('input[name="power"]:checked')?.value || 'battery';
 
         // Категорії для сайдбару
         const categoryMapping = {
@@ -78,16 +92,16 @@ export function initAdminTool() {
 
         const currentCategory = categoryMapping[rawType] || 'Керування';
 
-        // Об'єкт пристрою
+        // Об'єкт пристрою для бази
         const newDevice = {
             id: `dev_${Date.now().toString().slice(-6)}`,
             brand: brand,
             category: currentCategory,
             name: name,
-            type: subType, // Використовуємо підтип як ключ для моделей в config.js
+            type: subType, // Тип для мапінгу 3D моделей у config.js
             subtype: subType,
             icon_file: "1.png",
-            model_path: "", // Порожньо для автопідбору
+            model_path: "", // Порожньо, щоб спрацювали DefaultModels
             capabilities: hardwareCaps,
             features: {
                 power: powerSource,
@@ -106,7 +120,7 @@ export function initAdminTool() {
             newDevice.features.max_devices = 128;
         }
 
-        // Макс. навантаження для Електрики
+        // Макс. навантаження для Електрики (якщо є поле)
         if (rawType === 'power') {
             const loadInput = activeGroup ? activeGroup.querySelector('input[type="number"]') : null;
             if (loadInput && loadInput.value) {
@@ -124,14 +138,14 @@ export function initAdminTool() {
             if (response.ok) {
                 modal.classList.add('hidden');
                 form.reset();
-                window.location.reload();
+                window.location.reload(); // Перезавантаження для оновлення списків
             } else {
                 const result = await response.json();
-                alert("Помилка: " + (result.message || "Не вдалося зберегти"));
+                alert("Помилка: " + (result.message || "Не вдалося зберегти пристрій"));
             }
         } catch (error) {
             console.error("Network Error:", error);
-            alert("Помилка мережі при спробі зв'язатися з сервером.");
+            alert("Помилка мережі. Перевірте з'єднання з сервером.");
         }
     };
 }

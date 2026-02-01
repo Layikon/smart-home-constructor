@@ -17,6 +17,27 @@
                 "power": "battery",
                 "requires_hub": true
             }
+        },
+        {
+            "id": "dev_064561",
+            "brand": "Aqara",
+            "category": "Клімат",
+            "name": "Йопта два ",
+            "type": "temp/hum",
+            "subtype": "temp/hum",
+            "icon_file": "1.png",
+            "model_path": "",
+            "capabilities": [
+                "matter",
+                "zigbee",
+                "sub1g",
+                "ble"
+            ],
+            "features": {
+                "power": "usb",
+                "requires_hub": true,
+                "is_master": false
+            }
         }
     ]
 }

@@ -6,20 +6,23 @@ import { initSensorPlacement } from './sensors.js';
 import { ProjectManager } from './project_manager.js';
 import { Simulator } from './simulator.js';
 import { initLabelRenderer } from './labels.js';
+import { initAdminTool } from './admin_tool.js';
 
 // 1. Ініціалізація базової сцени
 const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
 const container = document.getElementById('viewport');
 
-// 2. Рендерер для 2D написів (розміри стін, назви датчиків)
+// ВАЖЛИВО: Робимо контрол глобальним для блокування камери при розтягуванні
+window.controls = controls;
+
+// 2. Рендерер для 2D написів
 const labelRenderer = initLabelRenderer(container);
 
 // 3. Ініціалізація менеджерів
 const roomManager = new RoomManager(scene, camera, renderer);
 const simulator = new Simulator(scene);
 
-// ДОДАЄМО ОБ'ЄКТИ КІМНАТИ В МАСИВ ВЗАЄМОДІЇ
-// Це дозволяє ставити датчики на стіни/підлогу та бачити ручки розтягування
+// Додаємо об'єкти кімнати в масив взаємодії
 draggableObjects.push(roomManager.floor, roomManager.wallMesh);
 if (roomManager.handles) {
     Object.values(roomManager.handles).forEach(handle => draggableObjects.push(handle));
@@ -30,8 +33,9 @@ const onSensorSelect = (config) => {
     selectedSensorConfig = config;
 };
 
-// 4. Ініціалізація UI та системи розміщення
+// 4. Ініціалізація UI, системи розміщення та адмін-панелі
 const uiManager = initUI(scene, camera, controls, onSensorSelect);
+initAdminTool();
 
 initSensorPlacement(
     container,
@@ -44,19 +48,18 @@ initSensorPlacement(
 // 5. Менеджер проєктів
 const projectManager = new ProjectManager(scene, roomManager, uiManager, draggableObjects);
 
-// --- ГЛОБАЛЬНІ ФУНКЦІЇ ДЛЯ INTERFACE ---
+// --- ГЛОБАЛЬНІ ФУНКЦІЇ ---
 
 window.saveProject = () => projectManager.saveProject('save-project-btn');
 
 window.toggleSimulation = (btn) => {
-    const isActive = btn.classList.contains('active');
+    const isCurrentlyActive = btn.classList.contains('active');
+    const newState = !isCurrentlyActive;
 
-    // Перемикаємо стан симулятора
-    simulator.toggle(!isActive);
-    // Вимикаємо редагування кімнати під час симуляції
-    roomManager.setEditorMode(isActive);
+    simulator.toggle(newState);
+    roomManager.setEditorMode(!newState);
 
-    if (!isActive) {
+    if (newState) {
         btn.classList.add('active', 'bg-orange-500', 'text-white');
         btn.innerHTML = '<i class="fa-solid fa-stop"></i> Стоп';
         if (window.setPlacementMode) window.setPlacementMode(false);
@@ -68,32 +71,29 @@ window.toggleSimulation = (btn) => {
 
 window.setMode = (mode) => {
     const isEditRoom = (mode === 'room');
+
+    // Вмикаємо/вимикаємо ручки
     roomManager.setEditorMode(isEditRoom);
 
-    // Якщо вибрано режим кімнати - вимикаємо режим встановлення датчиків
     if (isEditRoom && window.setPlacementMode) {
         window.setPlacementMode(false);
     }
 
-    // Оновлюємо статус в UI (якщо потрібно)
+    // Оновлюємо статус в UI
     const statusText = document.getElementById('status-text');
-    if (statusText) statusText.textContent = isEditRoom ? "Room Edit" : "Select Mode";
+    if (statusText) statusText.textContent = isEditRoom ? "Конструктор приміщення" : "Режим вибору";
 };
 
 // 6. ГОЛОВНИЙ ЦИКЛ АНІМАЦІЇ
 function animate() {
     requestAnimationFrame(animate);
 
-    // Плавний рух камери до об'єктів
     if (uiManager?.updateCamera) uiManager.updateCamera(0.05);
-
-    // Робота симулятора зв'язків
     if (simulator.isActive) simulator.update();
 
     controls.update();
     renderer.render(scene, camera);
 
-    // ВАЖЛИВО: рендер 2D шару (метри та підписи)
     if (labelRenderer) labelRenderer.render(scene, camera);
 }
 
@@ -103,11 +103,16 @@ window.addEventListener('resize', () => {
     labelRenderer?.setSize(container.clientWidth, container.clientHeight);
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Завантаження збереженого проєкту з бази даних
-    projectManager.loadLastProject();
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Завантажуємо проєкт
+    await projectManager.loadLastProject();
 
-    // Початковий режим — вибір
+    // 2. ПРИМУСОВО ОНОВЛЮЄМО КІМНАТУ (щоб з'явилися метри/розміри стін відразу)
+    roomManager.updateRoom();
+    roomManager.syncUI();
+
+    // 3. Встановлюємо початковий режим
+    // Якщо хочеш, щоб ручки були відразу — став 'room', якщо ні — 'select'
     window.setMode('select');
 });
 

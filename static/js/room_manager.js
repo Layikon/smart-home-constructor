@@ -22,7 +22,6 @@ export class RoomManager {
         this.dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         this.intersection = new THREE.Vector3();
 
-        // Матеріали
         this.materials = {
             wall: new THREE.MeshPhongMaterial({
                 color: 0xd1d5db,
@@ -49,9 +48,10 @@ export class RoomManager {
         };
 
         this.init();
-        this.initDragLogic(); // Виклик ініціалізації логіки перетягування
+        this.initDragLogic();
     }
 
+    // ВИПРАВЛЕНО: Більш надійна логіка видимості
     setEditorMode(isVisible) {
         this.isDragging = false;
         this.activeHandle = null;
@@ -59,10 +59,20 @@ export class RoomManager {
         if (this.handles) {
             Object.values(this.handles).forEach(handle => {
                 handle.visible = isVisible;
-                if (handle.userData.label && handle.userData.label.element) {
-                    const style = handle.userData.label.element.style;
-                    style.visibility = isVisible ? 'visible' : 'hidden';
-                    style.display = isVisible ? 'block' : 'none';
+
+                if (handle.userData.label) {
+                    // Керуємо видимістю самого CSS2D об'єкта
+                    handle.userData.label.visible = isVisible;
+
+                    if (handle.userData.label.element) {
+                        const el = handle.userData.label.element;
+                        if (isVisible) {
+                            el.style.display = 'block';
+                            el.style.opacity = '1';
+                        } else {
+                            el.style.display = 'none';
+                        }
+                    }
                 }
             });
         }
@@ -79,37 +89,17 @@ export class RoomManager {
     createLabel() {
         if (!THREE.CSS2DObject) return new THREE.Group();
         const div = document.createElement('div');
-        div.className = 'wall-label bg-white/95 text-slate-600 px-2 py-1 rounded text-[11px] font-black border border-slate-200 backdrop-blur-sm pointer-events-none shadow-sm';
+        // Додано перевірку класів
+        div.className = 'wall-label bg-white/95 text-slate-600 px-2 py-1 rounded text-[11px] font-black border border-slate-200 backdrop-blur-sm pointer-events-none shadow-sm z-50';
         div.style.marginTop = '-2em';
+        // Прибираємо display: none звідси, керуємо лише через setEditorMode
         return new THREE.CSS2DObject(div);
-    }
-
-    updateSensors() {
-        const { width, depth } = this.params;
-        const center = this.roomGroup.position;
-
-        const minX = center.x - width / 2;
-        const maxX = center.x + width / 2;
-        const minZ = center.z - depth / 2;
-        const maxZ = center.z + depth / 2;
-
-        const tolerance = 0.5;
-
-        this.scene.traverse((obj) => {
-            if (obj.userData && obj.userData.isSensor) {
-                const pos = obj.position;
-                if (pos.x > maxX - tolerance) pos.x = maxX;
-                else if (pos.x < minX + tolerance) pos.x = minX;
-                if (pos.z > maxZ - tolerance) pos.z = maxZ;
-                else if (pos.z < minZ + tolerance) pos.z = minZ;
-            }
-        });
     }
 
     init() {
         this.floorThickness = 0.2;
         this.floor = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), this.materials.floor);
-        this.floor.userData.isWall = false; // Позначаємо, що це підлога
+        this.floor.userData.isWall = false;
         this.roomGroup.add(this.floor);
 
         this.grid = new THREE.GridHelper(1, 1, 0x3b82f6, 0xbfdbfe);
@@ -119,7 +109,7 @@ export class RoomManager {
         this.roomGroup.add(this.grid);
 
         this.wallMesh = new THREE.Mesh(new THREE.BufferGeometry(), this.materials.wall);
-        this.wallMesh.userData.isWall = true; // Важливо для Raycaster датчиків
+        this.wallMesh.userData.isWall = true;
         this.roomGroup.add(this.wallMesh);
 
         this.wallEdges = new THREE.LineSegments(new THREE.BufferGeometry(), this.materials.edges);
@@ -134,6 +124,8 @@ export class RoomManager {
         };
 
         this.updateRoom();
+        // Початковий стан — вимкнено
+        this.setEditorMode(false);
     }
 
     createHandle(side, geo) {
@@ -151,7 +143,6 @@ export class RoomManager {
 
         this.floor.scale.set(width, this.floorThickness, depth);
         this.floor.position.y = -(this.floorThickness / 2);
-
         this.grid.scale.set(width, 1, depth);
 
         const shape = new THREE.Shape();
@@ -202,7 +193,7 @@ export class RoomManager {
         this.handles.front.rotation.set(0, 0, 0);
         this.handles.front.userData.label.element.textContent = formatDim(width);
 
-        this.handles.back.position.set(0, hPos, -hw - offset);
+        this.handles.back.position.set(0, hPos, -hd - offset);
         this.handles.back.rotation.set(0, 0, 0);
         this.handles.back.userData.label.element.textContent = formatDim(width);
 
@@ -212,6 +203,7 @@ export class RoomManager {
     initDragLogic() {
         const onDown = (e) => {
             if (this.handles.right && !this.handles.right.visible) return;
+
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -229,6 +221,8 @@ export class RoomManager {
 
         const onMove = (e) => {
             if (!this.isDragging || !this.activeHandle) return;
+            e.preventDefault();
+
             const rect = this.renderer.domElement.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -237,37 +231,11 @@ export class RoomManager {
 
             if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersection)) {
                 const side = this.activeHandle.userData.side;
-                const currentPos = this.roomGroup.position;
-                const { width, depth } = this.params;
+                if (side === 'right') this.params.width = this.snapValue(Math.max(2, this.intersection.x * 2));
+                if (side === 'left') this.params.width = this.snapValue(Math.max(2, -this.intersection.x * 2));
+                if (side === 'front') this.params.depth = this.snapValue(Math.max(2, this.intersection.z * 2));
+                if (side === 'back') this.params.depth = this.snapValue(Math.max(2, -this.intersection.z * 2));
 
-                if (side === 'right') {
-                    const leftEdgeX = currentPos.x - width / 2;
-                    let newWidth = this.snapValue(this.intersection.x - leftEdgeX);
-                    if (newWidth < 2) newWidth = 2;
-                    this.params.width = newWidth;
-                    this.roomGroup.position.x = leftEdgeX + newWidth / 2;
-                }
-                else if (side === 'left') {
-                    const rightEdgeX = currentPos.x + width / 2;
-                    let newWidth = this.snapValue(rightEdgeX - this.intersection.x);
-                    if (newWidth < 2) newWidth = 2;
-                    this.params.width = newWidth;
-                    this.roomGroup.position.x = rightEdgeX - newWidth / 2;
-                }
-                else if (side === 'front') {
-                    const backEdgeZ = currentPos.z - depth / 2;
-                    let newDepth = this.snapValue(this.intersection.z - backEdgeZ);
-                    if (newDepth < 2) newDepth = 2;
-                    this.params.depth = newDepth;
-                    this.roomGroup.position.z = backEdgeZ + newDepth / 2;
-                }
-                else if (side === 'back') {
-                    const frontEdgeZ = currentPos.z + depth / 2;
-                    let newDepth = this.snapValue(frontEdgeZ - this.intersection.z);
-                    if (newDepth < 2) newDepth = 2;
-                    this.params.depth = newDepth;
-                    this.roomGroup.position.z = frontEdgeZ - newDepth / 2;
-                }
                 this.updateRoom();
                 this.syncUI();
             }
@@ -281,16 +249,26 @@ export class RoomManager {
         };
 
         this.renderer.domElement.addEventListener('pointerdown', onDown);
-        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointermove', onMove, { passive: false });
         window.addEventListener('pointerup', onUp);
     }
 
     syncUI() {
         const inW = document.getElementById('room-w'), inD = document.getElementById('room-d');
-        const valW = document.getElementById('val-room-w'), valD = document.getElementById('val-room-d');
         if(inW) inW.value = this.params.width;
         if(inD) inD.value = this.params.depth;
-        if(valW) valW.textContent = `${this.params.width}m`;
-        if(valD) valD.textContent = `${this.params.depth}m`;
+    }
+
+    updateSensors() {
+        const { width, depth } = this.params;
+        const hw = width / 2;
+        const hd = depth / 2;
+        this.scene.traverse((obj) => {
+            if (obj.userData && obj.userData.isSensor) {
+                const pos = obj.position;
+                pos.x = Math.max(-hw + 0.2, Math.min(hw - 0.2, pos.x));
+                pos.z = Math.max(-hd + 0.2, Math.min(hd - 0.2, pos.z));
+            }
+        });
     }
 }
