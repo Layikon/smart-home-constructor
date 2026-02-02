@@ -1,63 +1,73 @@
-// static/js/main.js
-import { setupScene } from './viewer.js';
-import { createRoom, drawDimensions } from './objects.js';
+import { initScene } from './scene_setup.js';
+import { RoomManager } from './room_manager.js';
+import { initUI } from './ui_manager.js';
+import { initSensorPlacement } from './sensors.js';
+import { ProjectManager } from './project_manager.js';
+import { Simulator } from './simulator.js'; // Перевір шлях, якщо переніс у папку
+import { initLabelRenderer } from './labels.js';
+import { initAdminTool } from './admin_tool.js';
 
-// 1. Отримуємо контейнер для рендеру
+const { scene, camera, renderer, controls, draggableObjects, onWindowResize } = initScene('viewport');
 const container = document.getElementById('viewport');
-const uiOverlay = document.getElementById('ui-overlay');
+window.controls = controls;
 
-// 2. Налаштовуємо сцену (камера зверху, світло, сітка)
-const { scene, camera, renderer, controls } = setupScene(container);
+const labelRenderer = initLabelRenderer(container);
+const roomManager = new RoomManager(scene, camera, renderer);
+const simulator = new Simulator(scene);
 
-// 3. Створюємо початкову кімнату (наприклад, 6 на 4 метри)
-// У майбутньому ми зможемо викликати цю функцію при натисканні на кнопку "+"
-let mainRoom = createRoom(scene, 6, 4);
+// ... (код ініціалізації draggableObjects) ...
+draggableObjects.push(roomManager.floor, roomManager.wallMesh);
+if (roomManager.handles) Object.values(roomManager.handles).forEach(h => draggableObjects.push(h));
 
-// 4. Головний цикл анімації
+let selectedSensorConfig = null;
+const uiManager = initUI(scene, camera, controls, (config) => { selectedSensorConfig = config; });
+initAdminTool();
+initSensorPlacement(container, scene, camera, draggableObjects, () => selectedSensorConfig);
+const projectManager = new ProjectManager(scene, roomManager, uiManager, draggableObjects);
+
+// --- ЛОГІКА КНОПОК ---
+window.setMode = (mode) => {
+    const isEditRoom = (mode === 'room');
+    if (isEditRoom && simulator.isActive) window.toggleSimulation(document.getElementById('mode-simulate'));
+    roomManager.setEditorMode(isEditRoom);
+    if (isEditRoom && window.setPlacementMode) window.setPlacementMode(false);
+};
+
+window.toggleSimulation = (btn) => {
+    const isActive = btn.classList.contains('active');
+    const newState = !isActive;
+
+    if (newState) {
+        roomManager.setEditorMode(false);
+        btn.classList.add('active', 'bg-orange-500', 'text-white');
+        btn.innerHTML = '<i class="fa-solid fa-stop"></i> Стоп';
+    } else {
+        btn.classList.remove('active', 'bg-orange-500', 'text-white');
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Симуляція';
+    }
+
+    // ВАЖЛИВО: Виклик методу класу Simulator
+    simulator.toggle(newState);
+};
+
+// --- ГОЛОВНИЙ ЦИКЛ ---
 function animate() {
     requestAnimationFrame(animate);
 
-    // Оновлюємо контролери (OrbitControls)
+    if (uiManager?.updateCamera) uiManager.updateCamera(0.05);
+
+    // ВАЖЛИВО: Оновлення анімації ліній
+    if (simulator.isActive) simulator.update();
+
     controls.update();
-
-    // Оновлюємо відображення розмірів (см) поверх 3D об'єкта
-    if (mainRoom) {
-        drawDimensions(uiOverlay, mainRoom, camera, container);
-    }
-
-    // Малюємо сцену
     renderer.render(scene, camera);
+    if (labelRenderer) labelRenderer.render(scene, camera);
 }
 
-// 5. Обробка зміни розміру вікна браузера
-window.addEventListener('resize', () => {
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const aspect = width / height;
-
-    // Оновлюємо параметри ортографічної камери
-    const d = 5;
-    camera.left = -d * aspect;
-    camera.right = d * aspect;
-    camera.top = d;
-    camera.bottom = -d;
-
-    camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
+document.addEventListener('DOMContentLoaded', async () => {
+    await projectManager.loadLastProject();
+    roomManager.updateRoom();
+    window.setMode('select');
 });
 
-// 6. Додаємо обробник для кнопки "Додати кімнату" (якщо потрібно створити нову)
-const addRoomBtn = document.getElementById('add-room');
-if (addRoomBtn) {
-    addRoomBtn.addEventListener('click', () => {
-        // Логіка створення ще однієї кімнати
-        console.log("Додаємо нову кімнату...");
-        const newRoom = createRoom(scene, 3, 3);
-        // Можна додати логіку вибору кімнати для редагування
-    });
-}
-
-// Запускаємо рендер
 animate();
-
-console.log("Smart Home Editor: Main module loaded.");

@@ -222,6 +222,7 @@ export function initSensorPlacement(container, scene, camera, draggableObjects, 
                     id: Date.now(),
                     db_id: sensorConfig.id,
                     type: sensorConfig.type,
+                    subtype: sensorConfig.subtype || sensorConfig.type, // Додано subtype
                     brand: sensorConfig.brand,
                     name: sensorConfig.name,
                     capabilities: sensorConfig.capabilities || [],
