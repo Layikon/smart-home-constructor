@@ -11,7 +11,6 @@ export class Simulator {
         this.networkLines = [];
         this.logicLines = [];
 
-        // Ініціалізуємо менеджер логіки
         this.connectionManager = new ConnectionManager(scene);
 
         this.connectionStyles = {
@@ -40,29 +39,47 @@ export class Simulator {
         const devices = [];
         const controllers = [];
 
-        // Збираємо об'єкти зі сцени
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
+
+                // --- АВТОМАТИЧНЕ ВИПРАВЛЕННЯ ДАНИХ (AUTO-REPAIR) ---
+                // Якщо завантажили збереження, де ще не було subtype, або він загубився
+                if (!obj.userData.subtype) {
+                    const caps = obj.userData.capabilities || [];
+
+                    if (obj.userData.type === 'hub') {
+                        // Якщо це "Хаб" за типом, треба зрозуміти: це Роутер чи Розумний Хаб?
+                        // Перевірка: Якщо є Zigbee, Matter, Sub1G або BLE - це Розумний Хаб.
+                        const isSmartHub = caps.some(c => ['zigbee', 'matter', 'sub1g', 'ble'].includes(c));
+
+                        if (isSmartHub) {
+                            obj.userData.subtype = 'hub';
+                        } else {
+                            // Якщо тільки Wi-Fi (або пусто) - вважаємо Роутером
+                            obj.userData.subtype = 'router';
+                        }
+                    } else {
+                        // Для звичайних датчиків (motion, door і т.д.) підтип = тип
+                        obj.userData.subtype = obj.userData.type;
+                    }
+                }
+                // ----------------------------------------------------
+
                 const subtype = obj.userData.subtype;
 
                 if (subtype === 'router') {
-                    // Роутер - це тільки контролер (роздає інтернет)
                     controllers.push(obj);
                 } else if (subtype === 'hub') {
-                    // Хаб - це і контролер (для Zigbee), і пристрій (для Wi-Fi)
                     controllers.push(obj);
                     devices.push(obj);
                 } else {
-                    // Звичайні датчики - це пристрої
                     devices.push(obj);
                 }
             }
         });
 
-        // Отримуємо розраховані зв'язки від менеджера
         const results = this.connectionManager.calculateAllConnections(devices, controllers);
 
-        // Візуалізуємо результати
         results.forEach(res => {
             if (res.type === 'network') {
                 this.drawNetworkLink(res.start, res.end, res.protocol);
@@ -85,7 +102,6 @@ export class Simulator {
 
     drawLogicLink(start, end) {
         const style = this.connectionStyles['logic'];
-        // Піднімаємо логічні лінії вище (на рівень очей), щоб не плутались з мережевими
         const startUp = start.clone().add(new THREE.Vector3(0, 0.5, 0));
         const endUp = end.clone().add(new THREE.Vector3(0, 0.5, 0));
         const line = this.createDashedLine(startUp, endUp, style);

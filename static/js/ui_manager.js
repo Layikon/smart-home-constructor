@@ -193,6 +193,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                     id: device.id,
                     brand: device.brand,
                     type: device.type,
+                    subtype: device.subtype || device.type, // <-- ОСЬ ТУТ БУЛА ПОМИЛКА, ТЕПЕР ВИПРАВЛЕНО
                     name: `${device.brand} ${device.name}`,
                     model_path: device.model_path,
                     color: device.color,

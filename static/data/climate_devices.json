@@ -39,6 +39,23 @@
                 "power": "battery",
                 "requires_hub": true
             }
+        },
+        {
+            "id": "dev_357057",
+            "brand": "Tuya",
+            "category": "Клімат",
+            "name": "аывавыаыв",
+            "type": "temp/hum",
+            "subtype": "temp/hum",
+            "icon_file": "1.png",
+            "model_path": "temp_sensor.glb",
+            "capabilities": [
+                "thread"
+            ],
+            "features": {
+                "power": "battery",
+                "requires_hub": true
+            }
         }
     ]
 }
