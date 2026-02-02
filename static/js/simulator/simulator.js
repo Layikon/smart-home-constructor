@@ -43,8 +43,19 @@ export class Simulator {
         // Збираємо об'єкти зі сцени
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
-                if (obj.userData.type === 'hub') controllers.push(obj);
-                else devices.push(obj);
+                const subtype = obj.userData.subtype;
+
+                if (subtype === 'router') {
+                    // Роутер - це тільки контролер (роздає інтернет)
+                    controllers.push(obj);
+                } else if (subtype === 'hub') {
+                    // Хаб - це і контролер (для Zigbee), і пристрій (для Wi-Fi)
+                    controllers.push(obj);
+                    devices.push(obj);
+                } else {
+                    // Звичайні датчики - це пристрої
+                    devices.push(obj);
+                }
             }
         });
 
