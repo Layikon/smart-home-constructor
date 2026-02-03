@@ -1,8 +1,9 @@
 // static/js/simulator/simulator.js
 import { ConnectionManager } from './connections.js';
 
-// --- НОВИЙ ІМПОРТ ---
-import { Temperature } from './devices/temperature.js';
+// --- ВИПРАВЛЕНИЙ ІМПОРТ ---
+// Виходимо з папки simulator (../) і заходимо в devices
+import { Temperature } from '../devices/temperature.js';
 
 const THREE = window.THREE;
 
@@ -22,6 +23,9 @@ export class Simulator {
         // Таймер потрібен для анімації температури (синусоїда)
         this.clock = new THREE.Clock();
 
+        // Попередньо створюємо текстуру для попередження
+        this.warningTexture = this.createWarningTexture();
+
         this.connectionStyles = {
             'wifi': { color: 0x3b82f6, dashSize: 0.4, gapSize: 0.1, opacity: 0.5 },
             'zigbee': { color: 0xf59e0b, dashSize: 0.2, gapSize: 0.1, opacity: 0.5 },
@@ -31,6 +35,52 @@ export class Simulator {
             'offline': { color: 0xef4444 },
             'default': { color: 0x94a3b8, dashSize: 0.2, gapSize: 0.1, opacity: 0.5 }
         };
+    }
+
+    // Метод для створення текстури один раз при ініціалізації
+    createWarningTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+
+        ctx.scale(2, 2);
+
+        // 1. Червоне коло
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(32, 32, 28, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Біла обводка
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Wi-Fi лінії
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+
+        // 3. Точка
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(32, 50, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4. Дуги
+        ctx.beginPath(); ctx.arc(32, 50, 11, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(32, 50, 19, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(32, 50, 27, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+
+        // 5. Перекреслення
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(18, 18);
+        ctx.lineTo(46, 46);
+        ctx.stroke();
+
+        return new THREE.CanvasTexture(canvas);
     }
 
     toggle(state) {
@@ -74,6 +124,7 @@ export class Simulator {
 
                 if (deviceInstance) {
                     this.activeDevices.push(deviceInstance);
+                    obj.userData.deviceInstance = deviceInstance;
                 }
                 // ---------------------------------------
 
@@ -141,51 +192,9 @@ export class Simulator {
     }
 
     drawWarning(sensor) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-
-        ctx.scale(2, 2);
-
-        // 1. Червоне коло
-        ctx.fillStyle = '#ff0000';
-        ctx.beginPath();
-        ctx.arc(32, 32, 28, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 2. Біла обводка
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Wi-Fi лінії
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-
-        // 3. Точка
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(32, 50, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 4. Дуги
-        ctx.beginPath(); ctx.arc(32, 50, 11, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
-        ctx.beginPath(); ctx.arc(32, 50, 19, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
-        ctx.beginPath(); ctx.arc(32, 50, 27, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
-
-        // 5. Перекреслення
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.moveTo(18, 18);
-        ctx.lineTo(46, 46);
-        ctx.stroke();
-
-        const texture = new THREE.CanvasTexture(canvas);
-
+        // Використовуємо вже створену текстуру
         const spriteMaterial = new THREE.SpriteMaterial({
-            map: texture,
+            map: this.warningTexture,
             transparent: true,
             depthTest: false,
             toneMapped: false,
@@ -217,7 +226,11 @@ export class Simulator {
     }
 
     clearSimulation() {
-        this.networkLines.forEach(l => this.scene.remove(l));
+        this.networkLines.forEach(l => {
+            // Очищення матеріалів спрайтів
+            if (l.material && l.material.dispose) l.material.dispose();
+            this.scene.remove(l);
+        });
         this.logicLines.forEach(l => this.scene.remove(l));
         this.networkLines = [];
         this.logicLines = [];
@@ -235,7 +248,15 @@ export class Simulator {
         // Оновлюємо температуру
         this.activeDevices.forEach(device => device.update(time));
 
-        this.networkLines.forEach(line => { if (line.material.dashOffset !== undefined) line.material.dashOffset -= 0.005; });
-        this.logicLines.forEach(line => { if (line.material.dashOffset !== undefined) line.material.dashOffset -= 0.02; });
+        this.networkLines.forEach(line => {
+            if (line.material && line.material.dashOffset !== undefined) {
+                line.material.dashOffset -= 0.005;
+            }
+        });
+        this.logicLines.forEach(line => {
+            if (line.material && line.material.dashOffset !== undefined) {
+                line.material.dashOffset -= 0.02;
+            }
+        });
     }
 }

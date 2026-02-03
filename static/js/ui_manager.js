@@ -249,21 +249,49 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
                 groups[type].forEach((s) => {
                     const item = document.createElement('div');
-                    item.className = "flex items-center justify-between bg-white border border-slate-100 p-2 rounded-lg text-[10px] hover:border-blue-300 hover:shadow-sm transition cursor-pointer group mb-1";
+                    item.className = "flex flex-col bg-white border border-slate-100 p-2 rounded-lg text-[10px] hover:border-blue-300 hover:shadow-sm transition cursor-pointer group mb-1";
+
+                    // Поточний стан (true за замовчуванням)
+                    const isOn = s.userData.isOn !== false;
+
                     item.onclick = (e) => {
-                        if (e.target.closest('button')) return;
+                        if (e.target.closest('button') || e.target.closest('.toggle-container')) return;
                         const sensor = scene.getObjectById(s.id);
                         if (sensor) {
                             cameraTarget = sensor.position.clone().add(new window.THREE.Vector3(4, 4, 4));
                             orbitTarget = sensor.position.clone();
                         }
                     };
+
                     item.innerHTML = `
-                        <span class="text-slate-600 font-medium">${s.userData.name || 'Датчик'}</span>
-                        <button onclick="window.removeSensorById(${s.id})" class="text-slate-300 hover:text-rose-500 transition">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-slate-600 font-bold truncate pr-2">${s.userData.name || 'Датчик'}</span>
+                            <div class="flex items-center gap-3">
+                                <label class="toggle-container relative inline-flex items-center cursor-pointer scale-75">
+                                    <input type="checkbox" class="sr-only peer" ${isOn ? 'checked' : ''} data-id="${s.id}">
+                                    <div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-500"></div>
+                                </label>
+
+                                <button onclick="window.removeSensorById(${s.id})" class="text-slate-300 hover:text-rose-500 transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
                     `;
+
+                    // Додаємо подію для повзунка
+                    const toggle = item.querySelector('input[type="checkbox"]');
+                    toggle.addEventListener('change', (e) => {
+                        const sensor = scene.getObjectById(parseInt(e.target.dataset.id));
+                        if (sensor && sensor.userData.deviceInstance) {
+                            // Викликаємо метод toggle() самого пристрою
+                            sensor.userData.deviceInstance.toggle();
+                        } else if (sensor) {
+                            // Якщо інстанс ще не створений (наприклад, симуляція не запущена), змінюємо дані напряму
+                            sensor.userData.isOn = e.target.checked;
+                        }
+                    });
+
                     objectListContainer.appendChild(item);
                 });
             }
