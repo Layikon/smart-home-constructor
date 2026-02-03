@@ -38,7 +38,8 @@ window.setMode = (mode) => {
 
     // Якщо включаємо редактор кімнати, вимикаємо симуляцію
     if (isEditRoom && simulator.isActive) {
-        window.toggleSimulation(document.getElementById('mode-simulate'));
+        const simBtn = document.getElementById('mode-simulate');
+        if (simBtn) window.toggleSimulation(simBtn);
     }
 
     roomManager.setEditorMode(isEditRoom);
@@ -50,6 +51,7 @@ window.setMode = (mode) => {
 };
 
 window.toggleSimulation = (btn) => {
+    if (!btn) return;
     const isActive = btn.classList.contains('active');
     const newState = !isActive;
 
@@ -74,16 +76,18 @@ function animate() {
     requestAnimationFrame(animate);
 
     // Оновлення камер та контролів
-    if (uiManager?.updateCamera) uiManager.updateCamera(0.05);
+    if (uiManager && uiManager.updateCamera) uiManager.updateCamera(0.05);
     controls.update();
 
     // Оновлення симуляції (лінії зв'язку)
-    if (simulator.isActive) {
+    if (simulator && simulator.isActive) {
         simulator.update();
     }
 
     renderer.render(scene, camera);
-    if (labelRenderer) labelRenderer.render(scene, camera);
+    if (labelRenderer && typeof labelRenderer.render === 'function') {
+        labelRenderer.render(scene, camera);
+    }
 }
 
 // 6. Завантаження проекту при старті

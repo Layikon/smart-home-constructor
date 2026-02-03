@@ -1,3 +1,5 @@
+// static/js/ui_manager.js
+
 export function initUI(scene, camera, controls, onSensorSelectCallback) {
     const sensorsContainer = document.getElementById('dynamic-sensors');
     const selectToolBtn = document.getElementById('tool-select');
@@ -10,6 +12,9 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
     const filterDrawer = document.getElementById('filter-drawer');
     const closeFilterBtn = document.getElementById('close-filter-btn');
+
+    // Визначаємо THREE один раз
+    const THREE = window.THREE;
 
     let cameraTarget = null;
     let orbitTarget = null;
@@ -74,17 +79,13 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         if (!config) return;
 
         try {
-            // Додаємо timestamp щоб уникнути кешування
             const response = await fetch(`/static/data/${config.file}?t=${Date.now()}`);
-            if (!response.ok) {
-                throw new Error(`Файл ${config.file} не знайдено на сервері (Status: ${response.status})`);
-            }
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
             const data = await response.json();
             deviceLibrary = data.library || [];
-            console.log(`✅ Завантажено ${deviceLibrary.length} пристроїв з ${config.file}`);
             return deviceLibrary;
         } catch (error) {
-            console.error(`❌ Помилка:`, error.message);
+            console.error(`❌ Помилка завантаження:`, error.message);
             deviceLibrary = [];
             return [];
         }
@@ -153,7 +154,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         if (!drawerContent) return;
         drawerContent.innerHTML = '';
         if (!devices?.length) {
-            drawerContent.innerHTML = '<div class="text-[10px] text-slate-400 p-4 italic text-center w-full">У цій категорії ще немає пристроїв або файл бази відсутній</div>';
+            drawerContent.innerHTML = '<div class="text-[10px] text-slate-400 p-4 italic text-center w-full">Немає пристроїв</div>';
             return;
         }
 
@@ -161,54 +162,37 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             'wifi': 'bg-blue-50 text-blue-600 border-blue-100',
             'zigbee': 'bg-orange-50 text-orange-600 border-orange-100',
             'matter': 'bg-purple-50 text-purple-600 border-purple-100',
-            'thread': 'bg-emerald-50 text-emerald-600 border-emerald-100',
-            'ble': 'bg-cyan-50 text-cyan-600 border-cyan-100',
             'sub1g': 'bg-indigo-50 text-indigo-600 border-indigo-100'
         };
 
         devices.forEach((device) => {
             const item = document.createElement('div');
-            item.className = 'drawer-item hover:bg-slate-50 transition-all border-b border-slate-50 last:border-0 p-3 flex gap-3 cursor-pointer';
+            item.className = 'drawer-item hover:bg-slate-50 border-b border-slate-50 p-3 flex gap-3 cursor-pointer';
             const iconPath = device.icon_file ? `/static/data/icons/${device.icon_file}` : '/static/data/icons/default.png';
 
-            const caps = (device.capabilities && device.capabilities.length > 0)
-                ? device.capabilities
-                : [device.protocol || 'N/A'];
-
+            const caps = (device.capabilities?.length > 0) ? device.capabilities : [device.protocol || 'N/A'];
             const protocolsHtml = caps.map(proto => {
-                const key = proto.toLowerCase();
-                const colorClass = protocolColors[key] || 'bg-slate-50 text-slate-500 border-slate-100';
-                return `<span class="text-[7px] ${colorClass} px-1.5 py-0.5 rounded-sm border font-bold uppercase tracking-tight">${proto}</span>`;
+                const colorClass = protocolColors[proto.toLowerCase()] || 'bg-slate-50 text-slate-500 border-slate-100';
+                return `<span class="text-[7px] ${colorClass} px-1.5 py-0.5 rounded-sm border font-bold uppercase">${proto}</span>`;
             }).join('');
 
             item.innerHTML = `
-                <div class="icon-wrapper flex-shrink-0 w-12 h-12 border border-slate-100 rounded-lg bg-white p-1 shadow-sm overflow-hidden">
+                <div class="icon-wrapper w-12 h-12 border border-slate-100 rounded-lg p-1 shadow-sm">
                     <img src="${iconPath}" class="w-full h-full object-contain">
                 </div>
-                <div class="flex flex-col flex-1 min-w-0 justify-center">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-[9px] text-blue-500 font-bold uppercase tracking-wider">${device.brand}</span>
-                    </div>
-                    <span class="text-[11px] text-slate-700 font-bold truncate mb-1.5">${device.name}</span>
-                    <div class="flex flex-wrap gap-1">
-                        ${protocolsHtml}
-                    </div>
+                <div class="flex flex-col flex-1 justify-center min-w-0">
+                    <span class="text-[9px] text-blue-500 font-bold uppercase">${device.brand}</span>
+                    <span class="text-[11px] text-slate-700 font-bold truncate">${device.name}</span>
+                    <div class="flex gap-1 mt-1">${protocolsHtml}</div>
                 </div>
             `;
 
             item.onclick = () => {
-                const sensorConfig = {
-                    id: device.id,
-                    brand: device.brand,
-                    type: device.type,
+                onSensorSelectCallback({
+                    ...device,
                     subtype: device.subtype || device.type,
-                    name: `${device.brand} ${device.name}`,
-                    model_path: device.model_path,
-                    color: device.color,
-                    capabilities: device.capabilities || [],
-                    features: device.features || {}
-                };
-                onSensorSelectCallback(sensorConfig);
+                    name: `${device.brand} ${device.name}`
+                });
                 if (window.setPlacementMode) window.setPlacementMode(true);
             };
             drawerContent.appendChild(item);
@@ -230,6 +214,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         if (!objectListContainer) return;
         objectListContainer.innerHTML = '';
         const sensors = scene.children.filter(obj => obj.userData?.isSensor === true);
+
         const counter = document.getElementById('sensor-count');
         if (counter) counter.textContent = sensors.length;
 
@@ -249,19 +234,9 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
 
                 groups[type].forEach((s) => {
                     const item = document.createElement('div');
-                    item.className = "flex flex-col bg-white border border-slate-100 p-2 rounded-lg text-[10px] hover:border-blue-300 hover:shadow-sm transition cursor-pointer group mb-1";
+                    item.className = "flex flex-col bg-white border border-slate-100 p-2 rounded-lg text-[10px] hover:border-blue-300 transition cursor-pointer mb-1";
 
-                    // Поточний стан (true за замовчуванням)
                     const isOn = s.userData.isOn !== false;
-
-                    item.onclick = (e) => {
-                        if (e.target.closest('button') || e.target.closest('.toggle-container')) return;
-                        const sensor = scene.getObjectById(s.id);
-                        if (sensor) {
-                            cameraTarget = sensor.position.clone().add(new window.THREE.Vector3(4, 4, 4));
-                            orbitTarget = sensor.position.clone();
-                        }
-                    };
 
                     item.innerHTML = `
                         <div class="flex items-center justify-between w-full">
@@ -269,26 +244,32 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                             <div class="flex items-center gap-3">
                                 <label class="toggle-container relative inline-flex items-center cursor-pointer scale-75">
                                     <input type="checkbox" class="sr-only peer" ${isOn ? 'checked' : ''} data-id="${s.id}">
-                                    <div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-500"></div>
+                                    <div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-full"></div>
                                 </label>
-
-                                <button onclick="window.removeSensorById(${s.id})" class="text-slate-300 hover:text-rose-500 transition">
+                                <button onclick="window.removeSensorById(${s.id})" class="text-slate-300 hover:text-rose-500">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
                         </div>
                     `;
 
-                    // Додаємо подію для повзунка
+                    item.onclick = (e) => {
+                        if (e.target.closest('button') || e.target.closest('.toggle-container')) return;
+                        if (THREE) {
+                            cameraTarget = s.position.clone().add(new THREE.Vector3(4, 4, 4));
+                            orbitTarget = s.position.clone();
+                        }
+                    };
+
                     const toggle = item.querySelector('input[type="checkbox"]');
                     toggle.addEventListener('change', (e) => {
                         const sensor = scene.getObjectById(parseInt(e.target.dataset.id));
-                        if (sensor && sensor.userData.deviceInstance) {
-                            // Викликаємо метод toggle() самого пристрою
-                            sensor.userData.deviceInstance.toggle();
-                        } else if (sensor) {
-                            // Якщо інстанс ще не створений (наприклад, симуляція не запущена), змінюємо дані напряму
-                            sensor.userData.isOn = e.target.checked;
+                        if (sensor) {
+                            if (sensor.userData.deviceInstance) {
+                                sensor.userData.deviceInstance.toggle();
+                            } else {
+                                sensor.userData.isOn = e.target.checked;
+                            }
                         }
                     });
 
@@ -311,7 +292,6 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
             selectToolBtn.classList.add('active');
             if (drawer) drawer.classList.remove('open');
-            if (filterDrawer) filterDrawer.classList.remove('open');
             if (window.setPlacementMode) window.setPlacementMode(false);
         });
     }
@@ -321,7 +301,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     return {
         addItemToList: () => window.refreshUIList(),
         updateCamera: (lerpFactor) => {
-            if (cameraTarget && orbitTarget) {
+            if (THREE && cameraTarget && orbitTarget) {
                 camera.position.lerp(cameraTarget, lerpFactor);
                 controls.target.lerp(orbitTarget, lerpFactor);
                 if (camera.position.distanceTo(cameraTarget) < 0.05) {
