@@ -72,20 +72,26 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     async function loadCategoryDevices(categoryName) {
         const config = UI_STRUCTURE[categoryName];
         if (!config) return;
+
         try {
+            // Додаємо timestamp щоб уникнути кешування
             const response = await fetch(`/static/data/${config.file}?t=${Date.now()}`);
-            if (!response.ok) throw new Error('Файл не знайдено');
+            if (!response.ok) {
+                throw new Error(`Файл ${config.file} не знайдено на сервері (Status: ${response.status})`);
+            }
             const data = await response.json();
             deviceLibrary = data.library || [];
+            console.log(`✅ Завантажено ${deviceLibrary.length} пристроїв з ${config.file}`);
             return deviceLibrary;
         } catch (error) {
-            console.error(`Помилка завантаження ${config.file}:`, error);
+            console.error(`❌ Помилка:`, error.message);
             deviceLibrary = [];
             return [];
         }
     }
 
     function renderFixedSidebar() {
+        if (!sensorsContainer) return;
         sensorsContainer.innerHTML = '';
         Object.keys(UI_STRUCTURE).forEach(catName => {
             const config = UI_STRUCTURE[catName];
@@ -95,7 +101,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
             btn.onclick = async () => {
                 document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
                 btn.classList.add('active', 'border-blue-500');
-                selectToolBtn.classList.remove('active');
+                if (selectToolBtn) selectToolBtn.classList.remove('active');
                 await loadCategoryDevices(catName);
                 openDrawer(catName);
             };
@@ -104,6 +110,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     }
 
     function openDrawer(categoryName) {
+        if (!drawer) return;
         drawerTitle.textContent = categoryName;
         const config = UI_STRUCTURE[categoryName];
         filterContainer.innerHTML = '';
@@ -143,9 +150,10 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     }
 
     function renderDrawerContent(devices) {
+        if (!drawerContent) return;
         drawerContent.innerHTML = '';
         if (!devices?.length) {
-            drawerContent.innerHTML = '<div class="text-[10px] text-slate-400 p-4 italic text-center w-full">У цій категорії ще немає пристроїв</div>';
+            drawerContent.innerHTML = '<div class="text-[10px] text-slate-400 p-4 italic text-center w-full">У цій категорії ще немає пристроїв або файл бази відсутній</div>';
             return;
         }
 
@@ -193,7 +201,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
                     id: device.id,
                     brand: device.brand,
                     type: device.type,
-                    subtype: device.subtype || device.type, // <-- ОСЬ ТУТ БУЛА ПОМИЛКА, ТЕПЕР ВИПРАВЛЕНО
+                    subtype: device.subtype || device.type,
                     name: `${device.brand} ${device.name}`,
                     model_path: device.model_path,
                     color: device.color,
@@ -219,6 +227,7 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
     };
 
     window.refreshUIList = function() {
+        if (!objectListContainer) return;
         objectListContainer.innerHTML = '';
         const sensors = scene.children.filter(obj => obj.userData?.isSensor === true);
         const counter = document.getElementById('sensor-count');
@@ -269,13 +278,15 @@ export function initUI(scene, camera, controls, onSensorSelectCallback) {
         }
     };
 
-    selectToolBtn.addEventListener('click', () => {
-        document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
-        selectToolBtn.classList.add('active');
-        drawer.classList.remove('open');
-        filterDrawer.classList.remove('open');
-        if (window.setPlacementMode) window.setPlacementMode(false);
-    });
+    if (selectToolBtn) {
+        selectToolBtn.addEventListener('click', () => {
+            document.querySelectorAll('.sensor-btn').forEach(b => b.classList.remove('active', 'border-blue-500'));
+            selectToolBtn.classList.add('active');
+            if (drawer) drawer.classList.remove('open');
+            if (filterDrawer) filterDrawer.classList.remove('open');
+            if (window.setPlacementMode) window.setPlacementMode(false);
+        });
+    }
 
     renderFixedSidebar();
 

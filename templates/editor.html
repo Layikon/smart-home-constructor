@@ -76,7 +76,8 @@
         {% include 'filter_panel.html' %}
 
         <main class="flex-1 relative bg-white viewport-container w-full h-full" id="viewport">
-            <div id="system-status-panel" class="absolute top-4 right-4 z-50 bg-slate-900/80 backdrop-blur-md border border-slate-700 p-3 rounded-xl shadow-2xl min-w-[180px] pointer-events-none transition-opacity duration-300 opacity-0">
+
+            <div id="system-status-panel" class="absolute top-4 right-4 z-[100] bg-slate-900/80 backdrop-blur-md border border-slate-700 p-3 rounded-xl shadow-2xl min-w-[180px] pointer-events-none transition-opacity duration-300 opacity-0">
                 <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-slate-700 pb-1">Статус системи</div>
                 <div class="space-y-1.5">
                     <div class="flex justify-between items-center">
@@ -184,6 +185,22 @@
         function setMode(isSimulate) {
             simulator.toggle(isSimulate);
             room.setEditorMode(!isSimulate);
+
+            // --- ОСЬ ТУТ БУЛА ПРОБЛЕМА, МИ ЇЇ ВИПРАВИЛИ ---
+            // Пряме керування панеллю з головного файлу (найвищий пріоритет)
+            const statusPanel = document.getElementById('system-status-panel');
+            if (statusPanel) {
+                if (isSimulate) {
+                    statusPanel.classList.remove('opacity-0');
+                    statusPanel.style.opacity = '1';
+                    statusPanel.style.pointerEvents = 'auto';
+                } else {
+                    statusPanel.classList.add('opacity-0');
+                    statusPanel.style.opacity = '0';
+                    statusPanel.style.pointerEvents = 'none';
+                }
+            }
+            // ------------------------------------------------
 
             btnSimulate.classList.toggle('bg-white', isSimulate);
             btnSimulate.classList.toggle('shadow-sm', isSimulate);

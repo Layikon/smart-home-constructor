@@ -29,10 +29,20 @@ export class Simulator {
         const panel = document.getElementById('system-status-panel');
 
         if (this.isActive) {
-            if (panel) panel.classList.remove('opacity-0'); // Показуємо панель статусу
+            // Примусове відображення
+            if (panel) {
+                panel.classList.remove('opacity-0');
+                panel.style.opacity = '1';
+                panel.style.pointerEvents = 'auto';
+            }
             this.runSimulation();
         } else {
-            if (panel) panel.classList.add('opacity-0'); // Ховаємо панель статусу
+            // Приховання
+            if (panel) {
+                panel.classList.add('opacity-0');
+                panel.style.opacity = '0';
+                panel.style.pointerEvents = 'none';
+            }
             this.clearSimulation();
         }
     }
@@ -45,27 +55,11 @@ export class Simulator {
 
         this.scene.traverse((obj) => {
             if (obj.userData && obj.userData.isSensor) {
-
-                // --- АВТОМАТИЧНЕ ВИПРАВЛЕННЯ ДАНИХ (AUTO-REPAIR) ---
-                if (!obj.userData.subtype) {
-                    const caps = obj.userData.capabilities || [];
-
-                    if (obj.userData.type === 'hub') {
-                        const isSmartHub = caps.some(c => ['zigbee', 'matter', 'sub1g', 'ble'].includes(c));
-                        if (isSmartHub) {
-                            obj.userData.subtype = 'hub';
-                        } else {
-                            obj.userData.subtype = 'router';
-                        }
-                    } else {
-                        obj.userData.subtype = obj.userData.type;
-                    }
-                }
-                // ----------------------------------------------------
-
-                const subtype = obj.userData.subtype;
+                const subtype = obj.userData.subtype || obj.userData.type;
 
                 if (subtype === 'router') {
+                    // Роутер завжди онлайн
+                    obj.userData.isConnected = true;
                     controllers.push(obj);
                 } else if (subtype === 'hub') {
                     controllers.push(obj);
@@ -78,7 +72,7 @@ export class Simulator {
 
         const results = this.connectionManager.calculateAllConnections(devices, controllers);
 
-        // --- ОНОВЛЕННЯ ПАНЕЛІ СТАТУСУ ---
+        // Оновлюємо панель статистики
         this.updateStatusPanel(devices, controllers);
 
         results.forEach(res => {
@@ -93,14 +87,15 @@ export class Simulator {
     }
 
     updateStatusPanel(devices, controllers) {
-        // Рахуємо унікальні пристрої (щоб хаби не рахувалися двічі)
+        const totalEl = document.getElementById('stat-total');
+        if (!totalEl) return;
+
         const allUnique = new Set([...devices, ...controllers]);
         const total = allUnique.size;
 
         const onlineCount = Array.from(allUnique).filter(d => d.userData.isConnected).length;
         const offlineCount = total - onlineCount;
 
-        const totalEl = document.getElementById('stat-total');
         const onlineEl = document.getElementById('stat-online');
         const offlineEl = document.getElementById('stat-offline');
 
@@ -109,7 +104,7 @@ export class Simulator {
         if (offlineEl) offlineEl.textContent = `${offlineCount} ⚠️`;
     }
 
-    // --- МЕТОДИ МАЛЮВАННЯ ---
+    // --- МАЛЮВАННЯ ---
 
     drawNetworkLink(start, end, protocol) {
         const style = this.connectionStyles[protocol] || this.connectionStyles['default'];
@@ -129,32 +124,60 @@ export class Simulator {
 
     drawWarning(sensor) {
         const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = 128;
+        canvas.height = 128;
         const ctx = canvas.getContext('2d');
 
-        ctx.fillStyle = '#ef4444';
+        ctx.scale(2, 2);
+
+        // 1. Червоне коло
+        ctx.fillStyle = '#ff0000';
         ctx.beginPath();
-        ctx.arc(32, 32, 30, 0, Math.PI * 2);
+        ctx.arc(32, 32, 28, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('!', 32, 32);
+        // 2. Біла обводка
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Wi-Fi лінії
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+
+        // 3. Точка
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(32, 50, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4. Дуги
+        ctx.beginPath(); ctx.arc(32, 50, 11, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(32, 50, 19, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(32, 50, 27, 1.25 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+
+        // 5. Перекреслення
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(18, 18);
+        ctx.lineTo(46, 46);
+        ctx.stroke();
 
         const texture = new THREE.CanvasTexture(canvas);
+
         const spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            depthTest: false
+            depthTest: false, // Щоб було видно крізь стіни
+            toneMapped: false, // Ігноруємо освітлення (завжди яскравий колір)
+            fog: false // <--- ГОЛОВНА ЗМІНА: Ігноруємо туман (не тьмяніє здалеку)
         });
 
         const sprite = new THREE.Sprite(spriteMaterial);
-        sprite.scale.set(0.4, 0.4, 1);
+        sprite.scale.set(0.6, 0.6, 1);
         sprite.position.copy(sensor.position);
-        sprite.position.y += 0.5;
+        sprite.position.y += 0.6;
 
         this.scene.add(sprite);
         this.networkLines.push(sprite);
