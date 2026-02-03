@@ -1,6 +1,9 @@
 // static/js/simulator/simulator.js
 import { ConnectionManager } from './connections.js';
 
+// --- НОВИЙ ІМПОРТ ---
+import { Temperature } from './devices/temperature.js';
+
 const THREE = window.THREE;
 
 export class Simulator {
@@ -11,7 +14,13 @@ export class Simulator {
         this.networkLines = [];
         this.logicLines = [];
 
+        // Список активних пристроїв для оновлення
+        this.activeDevices = [];
+
         this.connectionManager = new ConnectionManager(scene);
+
+        // Таймер потрібен для анімації температури (синусоїда)
+        this.clock = new THREE.Clock();
 
         this.connectionStyles = {
             'wifi': { color: 0x3b82f6, dashSize: 0.4, gapSize: 0.1, opacity: 0.5 },
@@ -29,7 +38,6 @@ export class Simulator {
         const panel = document.getElementById('system-status-panel');
 
         if (this.isActive) {
-            // Примусове відображення
             if (panel) {
                 panel.classList.remove('opacity-0');
                 panel.style.opacity = '1';
@@ -37,7 +45,6 @@ export class Simulator {
             }
             this.runSimulation();
         } else {
-            // Приховання
             if (panel) {
                 panel.classList.add('opacity-0');
                 panel.style.opacity = '0';
@@ -49,6 +56,7 @@ export class Simulator {
 
     runSimulation() {
         this.clearSimulation();
+        this.clock.start(); // Запускаємо годинник
 
         const devices = [];
         const controllers = [];
@@ -57,8 +65,19 @@ export class Simulator {
             if (obj.userData && obj.userData.isSensor) {
                 const subtype = obj.userData.subtype || obj.userData.type;
 
+                // --- ПІДКЛЮЧЕННЯ ДАТЧИКА ТЕМПЕРАТУРИ ---
+                let deviceInstance = null;
+
+                if (subtype === 'temp' || subtype === 'temp/hum') {
+                    deviceInstance = new Temperature(obj, this.scene);
+                }
+
+                if (deviceInstance) {
+                    this.activeDevices.push(deviceInstance);
+                }
+                // ---------------------------------------
+
                 if (subtype === 'router') {
-                    // Роутер завжди онлайн
                     obj.userData.isConnected = true;
                     controllers.push(obj);
                 } else if (subtype === 'hub') {
@@ -72,7 +91,6 @@ export class Simulator {
 
         const results = this.connectionManager.calculateAllConnections(devices, controllers);
 
-        // Оновлюємо панель статистики
         this.updateStatusPanel(devices, controllers);
 
         results.forEach(res => {
@@ -169,9 +187,9 @@ export class Simulator {
         const spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            depthTest: false, // Щоб було видно крізь стіни
-            toneMapped: false, // Ігноруємо освітлення (завжди яскравий колір)
-            fog: false // <--- ГОЛОВНА ЗМІНА: Ігноруємо туман (не тьмяніє здалеку)
+            depthTest: false,
+            toneMapped: false,
+            fog: false
         });
 
         const sprite = new THREE.Sprite(spriteMaterial);
@@ -203,10 +221,20 @@ export class Simulator {
         this.logicLines.forEach(l => this.scene.remove(l));
         this.networkLines = [];
         this.logicLines = [];
+
+        // Зупиняємо пристрої
+        this.activeDevices.forEach(d => { if (d.onStop) d.onStop(); });
+        this.activeDevices = [];
     }
 
     update() {
         if (!this.isActive) return;
+
+        const time = this.clock.getElapsedTime();
+
+        // Оновлюємо температуру
+        this.activeDevices.forEach(device => device.update(time));
+
         this.networkLines.forEach(line => { if (line.material.dashOffset !== undefined) line.material.dashOffset -= 0.005; });
         this.logicLines.forEach(line => { if (line.material.dashOffset !== undefined) line.material.dashOffset -= 0.02; });
     }
