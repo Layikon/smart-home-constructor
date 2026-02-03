@@ -293,3 +293,20 @@ canvas {
 .border-indigo-200 {
     border-color: #a5b4fc !important; /* Indigo 300 */
 }
+
+/* --- ПАНЕЛЬ СТАТУСУ СИСТЕМИ --- */
+#system-status-panel {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#system-status-panel.opacity-0 {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+#system-status-panel:not(.opacity-0) {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}

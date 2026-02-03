@@ -26,9 +26,13 @@ export class Simulator {
 
     toggle(state) {
         this.isActive = state;
+        const panel = document.getElementById('system-status-panel');
+
         if (this.isActive) {
+            if (panel) panel.classList.remove('opacity-0'); // Показуємо панель статусу
             this.runSimulation();
         } else {
+            if (panel) panel.classList.add('opacity-0'); // Ховаємо панель статусу
             this.clearSimulation();
         }
     }
@@ -43,23 +47,17 @@ export class Simulator {
             if (obj.userData && obj.userData.isSensor) {
 
                 // --- АВТОМАТИЧНЕ ВИПРАВЛЕННЯ ДАНИХ (AUTO-REPAIR) ---
-                // Якщо завантажили збереження, де ще не було subtype, або він загубився
                 if (!obj.userData.subtype) {
                     const caps = obj.userData.capabilities || [];
 
                     if (obj.userData.type === 'hub') {
-                        // Якщо це "Хаб" за типом, треба зрозуміти: це Роутер чи Розумний Хаб?
-                        // Перевірка: Якщо є Zigbee, Matter, Sub1G або BLE - це Розумний Хаб.
                         const isSmartHub = caps.some(c => ['zigbee', 'matter', 'sub1g', 'ble'].includes(c));
-
                         if (isSmartHub) {
                             obj.userData.subtype = 'hub';
                         } else {
-                            // Якщо тільки Wi-Fi (або пусто) - вважаємо Роутером
                             obj.userData.subtype = 'router';
                         }
                     } else {
-                        // Для звичайних датчиків (motion, door і т.д.) підтип = тип
                         obj.userData.subtype = obj.userData.type;
                     }
                 }
@@ -80,6 +78,9 @@ export class Simulator {
 
         const results = this.connectionManager.calculateAllConnections(devices, controllers);
 
+        // --- ОНОВЛЕННЯ ПАНЕЛІ СТАТУСУ ---
+        this.updateStatusPanel(devices, controllers);
+
         results.forEach(res => {
             if (res.type === 'network') {
                 this.drawNetworkLink(res.start, res.end, res.protocol);
@@ -89,6 +90,23 @@ export class Simulator {
                 this.drawWarning(res.sensor);
             }
         });
+    }
+
+    updateStatusPanel(devices, controllers) {
+        // Рахуємо унікальні пристрої (щоб хаби не рахувалися двічі)
+        const allUnique = new Set([...devices, ...controllers]);
+        const total = allUnique.size;
+
+        const onlineCount = Array.from(allUnique).filter(d => d.userData.isConnected).length;
+        const offlineCount = total - onlineCount;
+
+        const totalEl = document.getElementById('stat-total');
+        const onlineEl = document.getElementById('stat-online');
+        const offlineEl = document.getElementById('stat-offline');
+
+        if (totalEl) totalEl.textContent = total;
+        if (onlineEl) onlineEl.textContent = `${onlineCount} ✅`;
+        if (offlineEl) offlineEl.textContent = `${offlineCount} ⚠️`;
     }
 
     // --- МЕТОДИ МАЛЮВАННЯ ---
@@ -110,14 +128,36 @@ export class Simulator {
     }
 
     drawWarning(sensor) {
-        const ringGeo = new THREE.RingGeometry(0.18, 0.22, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.copy(sensor.position);
-        ring.position.y = 0.02;
-        ring.rotation.x = -Math.PI / 2;
-        this.scene.add(ring);
-        this.networkLines.push(ring);
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(32, 32, 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('!', 32, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false
+        });
+
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(0.4, 0.4, 1);
+        sprite.position.copy(sensor.position);
+        sprite.position.y += 0.5;
+
+        this.scene.add(sprite);
+        this.networkLines.push(sprite);
     }
 
     createDashedLine(start, end, style) {
