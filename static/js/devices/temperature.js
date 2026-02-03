@@ -1,7 +1,8 @@
-// static/js/simulator/devices/temperature.js
+// static/js/devices/temperature.js
 import { BaseDevice } from './base_device.js';
-// Імпортуємо універсальний модуль
-import { OnOffControl } from '../on_off.js';
+
+// ВИПРАВЛЕНО: шлях до OnOffControl, який тепер у папці simulator
+import { OnOffControl } from '../simulator/on_off.js';
 
 export class Temperature extends BaseDevice {
     constructor(mesh, scene) {

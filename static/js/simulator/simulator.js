@@ -1,9 +1,9 @@
 // static/js/simulator/simulator.js
 import { ConnectionManager } from './connections.js';
 
-// --- ВИПРАВЛЕНИЙ ІМПОРТ ---
-// Виходимо з папки simulator (../) і заходимо в devices
-import { Temperature } from './devices/temperature.js';
+// --- ВИПРАВЛЕНИЙ ШЛЯХ ІМПОРТУ ---
+import { Temperature } from '../devices/temperature.js';
+import { updateSensorLabel } from '../labels.js';
 
 const THREE = window.THREE;
 
@@ -245,8 +245,15 @@ export class Simulator {
 
         const time = this.clock.getElapsedTime();
 
-        // Оновлюємо температуру
-        this.activeDevices.forEach(device => device.update(time));
+        // Оновлюємо температуру та лейбли
+        this.activeDevices.forEach(device => {
+            device.update(time);
+
+            // Оновлюємо візуальний статус ON/OFF над датчиком
+            if (device.mesh && device.mesh.userData.labelElement) {
+                updateSensorLabel(device.mesh, device.mesh.userData.labelElement);
+            }
+        });
 
         this.networkLines.forEach(line => {
             if (line.material && line.material.dashOffset !== undefined) {

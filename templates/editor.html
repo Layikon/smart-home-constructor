@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
 
+    <script src="/static/js/404_handler.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -186,8 +188,6 @@
             simulator.toggle(isSimulate);
             room.setEditorMode(!isSimulate);
 
-            // --- ОСЬ ТУТ БУЛА ПРОБЛЕМА, МИ ЇЇ ВИПРАВИЛИ ---
-            // Пряме керування панеллю з головного файлу (найвищий пріоритет)
             const statusPanel = document.getElementById('system-status-panel');
             if (statusPanel) {
                 if (isSimulate) {
@@ -200,7 +200,6 @@
                     statusPanel.style.pointerEvents = 'none';
                 }
             }
-            // ------------------------------------------------
 
             btnSimulate.classList.toggle('bg-white', isSimulate);
             btnSimulate.classList.toggle('shadow-sm', isSimulate);
